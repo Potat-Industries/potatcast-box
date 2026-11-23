@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 	"os"
@@ -12,67 +11,34 @@ import (
 )
 
 func statusHandler(responseWriter http.ResponseWriter, request *http.Request) {
-	streamKey := request.URL.Query().Get("key")
-
-	if streamKey == "" {
-		sessionStatusesHandler(responseWriter, request)
-	} else {
-		streamStatusHandler(responseWriter, request)
+	if !helpers.RequireMethod(responseWriter, request, http.MethodGet, http.MethodHead) {
+		return
 	}
 
-	responseWriter.Header().Add("Content-Type", "application/json")
+	if streamKey := request.URL.Query().Get("key"); streamKey != "" {
+		streamStatusHandler(responseWriter, streamKey)
+		return
+	}
+
+	sessionStatusesHandler(responseWriter)
 }
 
-func streamStatusHandler(responseWriter http.ResponseWriter, request *http.Request) {
-	streamKey := request.URL.Query().Get("key")
-
+func streamStatusHandler(responseWriter http.ResponseWriter, streamKey string) {
 	session, ok := manager.SessionsManager.GetSessionByID(streamKey)
-
 	if !ok {
 		slog.Info("Could not find active stream", "streamKey", streamKey)
-		helpers.LogHTTPError(
-			responseWriter,
-			"No active stream found",
-			http.StatusNotFound)
-
+		helpers.LogHTTPError(responseWriter, "No active stream found", http.StatusNotFound)
 		return
 	}
 
-	statusResult := session.GetStreamStatus()
-
-	if err := json.NewEncoder(responseWriter).Encode(statusResult); err != nil {
-		helpers.LogHTTPError(
-			responseWriter,
-			"Internal Server Error",
-			http.StatusInternalServerError)
-		slog.Error("API.Status Error", "err", err)
-	}
-
-	responseWriter.Header().Add("Content-Type", "application/json")
+	helpers.WriteJSON(responseWriter, http.StatusOK, session.GetStreamStatus())
 }
 
-func sessionStatusesHandler(responseWriter http.ResponseWriter, request *http.Request) {
-	if request.Method == "DELETE" {
+func sessionStatusesHandler(responseWriter http.ResponseWriter) {
+	if os.Getenv(environment.DisableStatus) != "" {
+		helpers.LogHTTPError(responseWriter, "Status Service Unavailable", http.StatusServiceUnavailable)
 		return
 	}
 
-	if isDisabled := os.Getenv(environment.DisableStatus); isDisabled != "" {
-		helpers.LogHTTPError(
-			responseWriter,
-			"Status Service Unavailable",
-			http.StatusServiceUnavailable)
-
-		return
-	}
-
-	if err := json.NewEncoder(responseWriter).Encode(manager.SessionsManager.GetSessionStates(false)); err != nil {
-		helpers.LogHTTPError(
-			responseWriter,
-			"Internal Server Error",
-			http.StatusInternalServerError)
-
-		slog.Error("Internal Server Error", "err", err)
-	}
-
-	responseWriter.Header().Add("Content-Type", "application/json")
+	helpers.WriteJSON(responseWriter, http.StatusOK, manager.SessionsManager.GetSessionStates(false))
 }

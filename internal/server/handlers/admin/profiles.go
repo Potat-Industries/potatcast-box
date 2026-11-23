@@ -2,6 +2,7 @@ package admin
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -9,117 +10,61 @@ import (
 	"github.com/glimesh/broadcast-box/internal/server/helpers"
 )
 
-// Retrieve all existing profiles
-func ProfilesHandler(responseWriter http.ResponseWriter, request *http.Request) {
-	if isValidMethod := verifyValidMethod("GET", responseWriter, request); !isValidMethod {
-		return
-	}
+type streamKeyPayload struct {
+	StreamKey string `json:"streamKey"`
+}
 
-	sessionResult := verifyAdminSession(request)
-	if !sessionResult.IsValid {
-		helpers.LogHTTPError(responseWriter, sessionResult.ErrorMessage, http.StatusUnauthorized)
+func ProfilesHandler(responseWriter http.ResponseWriter, request *http.Request) {
+	if !requireAdmin(responseWriter, request, http.MethodGet) {
 		return
 	}
 
 	profiles, err := authorization.GetAdminProfilesAll()
 	if err != nil {
+		helpers.LogHTTPError(responseWriter, "Error reading profiles", http.StatusInternalServerError)
 		return
 	}
 
-	responseWriter.Header().Set("Content-Type", "application/json")
-
-	err = json.NewEncoder(responseWriter).Encode(profiles)
-	if err != nil {
-		slog.Error("API.Admin.Profiles Error", "err", err)
-	}
+	helpers.WriteJSON(responseWriter, http.StatusOK, profiles)
 }
 
-type adminTokenResetPayload struct {
-	StreamKey string `json:"streamKey"`
-}
-
-// Reset the token of an existing stream profile
 func ProfilesResetTokenHandler(responseWriter http.ResponseWriter, request *http.Request) {
-	if isValidMethod := verifyValidMethod("POST", responseWriter, request); !isValidMethod {
-		return
-	}
+	handleStreamKeyAction(responseWriter, request, func(streamKey string) error {
+		if err := authorization.ResetProfileToken(streamKey); err != nil {
+			slog.Error("API.Admin.ResetProfileToken", "err", err)
+			return errors.New("error updating token")
+		}
 
-	sessionResult := verifyAdminSession(request)
-	if !sessionResult.IsValid {
-		helpers.LogHTTPError(responseWriter, sessionResult.ErrorMessage, http.StatusUnauthorized)
-		return
-	}
-
-	var payload adminTokenResetPayload
-	if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
-		helpers.LogHTTPError(responseWriter, "Error resolving request", http.StatusBadRequest)
-		return
-	}
-
-	if err := authorization.ResetProfileToken(payload.StreamKey); err != nil {
-		slog.Error("API.Admin.ProfilesResetTokenHandler", "err", err)
-		helpers.LogHTTPError(responseWriter, "Error updating token", http.StatusBadRequest)
-		return
-	}
-
-	responseWriter.WriteHeader(http.StatusOK)
+		return nil
+	})
 }
 
-type adminAddStreamPayload struct {
-	StreamKey string `json:"streamKey"`
-}
-
-// Reset the token of an existing stream profile
 func ProfileAddHandler(responseWriter http.ResponseWriter, request *http.Request) {
-	if isValidMethod := verifyValidMethod("POST", responseWriter, request); !isValidMethod {
-		return
-	}
-
-	sessionResult := verifyAdminSession(request)
-	if !sessionResult.IsValid {
-		helpers.LogHTTPError(responseWriter, sessionResult.ErrorMessage, http.StatusUnauthorized)
-		return
-	}
-
-	var payload adminAddStreamPayload
-	if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
-		helpers.LogHTTPError(responseWriter, "Error resolving request", http.StatusBadRequest)
-		return
-	}
-
-	if _, err := authorization.CreateProfile(payload.StreamKey); err != nil {
-		slog.Error("API.Admin.CreateProfile", "err", err)
-		helpers.LogHTTPError(responseWriter, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	responseWriter.WriteHeader(http.StatusOK)
+	handleStreamKeyAction(responseWriter, request, func(streamKey string) error {
+		_, err := authorization.CreateProfile(streamKey)
+		return err
+	})
 }
 
-type adminRemoveStreamPayload struct {
-	StreamKey string `json:"streamKey"`
-}
-
-// Reset the token of an existing stream profile
 func ProfileRemoveHandler(responseWriter http.ResponseWriter, request *http.Request) {
-	if isValidMethod := verifyValidMethod("POST", responseWriter, request); !isValidMethod {
+	handleStreamKeyAction(responseWriter, request, func(streamKey string) error {
+		_, err := authorization.RemoveProfile(streamKey)
+		return err
+	})
+}
+
+func handleStreamKeyAction(responseWriter http.ResponseWriter, request *http.Request, action func(streamKey string) error) {
+	if !requireAdmin(responseWriter, request, http.MethodPost) {
 		return
 	}
 
-	sessionResult := verifyAdminSession(request)
-	if !sessionResult.IsValid {
-		helpers.LogHTTPError(responseWriter, sessionResult.ErrorMessage, http.StatusUnauthorized)
-		return
-	}
-
-	var payload adminRemoveStreamPayload
+	var payload streamKeyPayload
 	if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
 		helpers.LogHTTPError(responseWriter, "Error resolving request", http.StatusBadRequest)
 		return
 	}
 
-	if _, err := authorization.RemoveProfile(payload.StreamKey); err != nil {
-		slog.Error("API.Admin.RemoveProfile", "err", err)
+	if err := action(payload.StreamKey); err != nil {
 		helpers.LogHTTPError(responseWriter, err.Error(), http.StatusBadRequest)
 		return
 	}

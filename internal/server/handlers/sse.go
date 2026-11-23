@@ -14,6 +14,16 @@ import (
 	"github.com/glimesh/broadcast-box/internal/webrtc/sessions/manager"
 )
 
+const (
+	sseEventInterval = 5 * time.Second
+	sseWriteTimeout  = 500 * time.Millisecond
+)
+
+type sseSubscription struct {
+	events   func() []string
+	isClosed func() bool
+}
+
 func sseHandler(responseWriter http.ResponseWriter, request *http.Request) {
 	flusher, ok := responseWriter.(http.Flusher)
 	if !ok {
@@ -21,110 +31,109 @@ func sseHandler(responseWriter http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	responseWriter.Header().Add("Content-Type", "text/event-stream")
-	responseWriter.Header().Add("Cache-Control", "no-cache")
-	responseWriter.Header().Add("Connection", "keep-alive")
+	subscription, found := findSSESubscription(helpers.LastPathSegment(request.URL.Path))
+	if !found {
+		helpers.LogHTTPError(responseWriter, "Invalid request", http.StatusBadRequest)
+		return
+	}
 
-	values := strings.Split(request.URL.RequestURI(), "/")
-	sessionID := values[len(values)-1]
-
-	debugSseMessages := strings.EqualFold(os.Getenv(environment.DebugPrintSSEMessages), "true")
-	writeTimeout := 500 * time.Millisecond
+	responseWriter.Header().Set("Content-Type", "text/event-stream")
+	responseWriter.Header().Set("Cache-Control", "no-cache")
+	responseWriter.Header().Set("Connection", "keep-alive")
 
 	ctx := request.Context()
-	responseController := http.NewResponseController(responseWriter)
-
-	writeEvent := func(msg string) bool {
-		if msg == "" || ctx.Err() != nil {
-			return false
-		}
-
-		if debugSseMessages {
-			slog.Info("API.SSE Sending", "msg", msg)
-		}
-
-		if err := responseController.SetWriteDeadline(time.Now().Add(writeTimeout)); err != nil && !errors.Is(err, http.ErrNotSupported) {
-			slog.Error("API.SSE SetWriteDeadline error", "err", err)
-			return false
-		}
-
-		_, err := fmt.Fprintf(responseWriter, "%s\n", msg)
-		if err == nil {
-			flusher.Flush()
-		}
-
-		if deadlineErr := responseController.SetWriteDeadline(time.Time{}); deadlineErr != nil && !errors.Is(deadlineErr, http.ErrNotSupported) {
-			slog.Error("API.SSE ClearWriteDeadline error", "err", deadlineErr)
-			return false
-		}
-
-		if err != nil {
-			if errors.Is(err, os.ErrDeadlineExceeded) {
-				slog.Error("API.SSE Write timeout")
-			} else {
-				slog.Error("API.SSE Write error", "err", err)
+	writeEvent := newSSEEventWriter(responseWriter, flusher)
+	writeEvents := func() bool {
+		for _, event := range subscription.events() {
+			if event == "" || ctx.Err() != nil || !writeEvent(event) {
+				return false
 			}
-			return false
 		}
 
 		return true
 	}
 
-	if streamSession, whepSession, foundSession := manager.SessionsManager.GetSessionAndWHEPByID(sessionID); foundSession {
-		if !writeEvent(streamSession.GetSessionStatsEvent()) {
+	if !writeEvents() {
+		return
+	}
+
+	ticker := time.NewTicker(sseEventInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			slog.Info("API.SSE: Client disconnected")
 			return
-		}
-
-		host := streamSession.Host.Load()
-		if host != nil && !writeEvent(host.GetAvailableLayersEvent()) {
-			return
-		}
-
-		ticker := time.NewTicker(5 * time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				slog.Info("API.SSE: Client disconnected")
+		case <-ticker.C:
+			if subscription.isClosed() || !writeEvents() {
 				return
-			case <-ticker.C:
-				if whepSession.IsSessionClosed.Load() {
-					return
-				}
-
-				if !writeEvent(streamSession.GetSessionStatsEvent()) {
-					return
-				}
-
-				host := streamSession.Host.Load()
-				if host != nil && !writeEvent(host.GetAvailableLayersEvent()) {
-					return
-				}
 			}
 		}
 	}
+}
 
-	if streamSession, foundSession := manager.SessionsManager.GetSessionByHostSessionID(sessionID); foundSession {
-		if !writeEvent(streamSession.GetSessionStatsEvent()) {
-			return
-		}
-
-		ticker := time.NewTicker(5 * time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				slog.Info("API.SSE: Client disconnected")
-				return
-			case <-ticker.C:
-				if !writeEvent(streamSession.GetSessionStatsEvent()) {
-					return
+// A session ID belongs either to a viewer (WHEP), who also receives the available layers, or to the broadcaster (WHIP).
+func findSSESubscription(sessionID string) (sseSubscription, bool) {
+	if streamSession, whepSession, found := manager.SessionsManager.GetSessionAndWHEPByID(sessionID); found {
+		return sseSubscription{
+			events: func() []string {
+				events := []string{streamSession.GetSessionStatsEvent()}
+				if host := streamSession.Host.Load(); host != nil {
+					events = append(events, host.GetAvailableLayersEvent())
 				}
-			}
-		}
+
+				return events
+			},
+			isClosed: whepSession.IsSessionClosed.Load,
+		}, true
 	}
 
-	helpers.LogHTTPError(responseWriter, "Invalid request", http.StatusBadRequest)
+	if streamSession, found := manager.SessionsManager.GetSessionByHostSessionID(sessionID); found {
+		return sseSubscription{
+			events:   func() []string { return []string{streamSession.GetSessionStatsEvent()} },
+			isClosed: func() bool { return false },
+		}, true
+	}
+
+	return sseSubscription{}, false
+}
+
+func newSSEEventWriter(responseWriter http.ResponseWriter, flusher http.Flusher) func(event string) bool {
+	debugSSEMessages := strings.EqualFold(os.Getenv(environment.DebugPrintSSEMessages), "true")
+	responseController := http.NewResponseController(responseWriter)
+
+	return func(event string) bool {
+		if debugSSEMessages {
+			slog.Info("API.SSE Sending", "msg", event)
+		}
+
+		if err := responseController.SetWriteDeadline(time.Now().Add(sseWriteTimeout)); err != nil && !errors.Is(err, http.ErrNotSupported) {
+			slog.Error("API.SSE SetWriteDeadline error", "err", err)
+			return false
+		}
+
+		_, writeErr := fmt.Fprintf(responseWriter, "%s\n", event)
+		if writeErr == nil {
+			flusher.Flush()
+		}
+
+		// SSE responses stay open, so the deadline must not outlive this single write.
+		if err := responseController.SetWriteDeadline(time.Time{}); err != nil && !errors.Is(err, http.ErrNotSupported) {
+			slog.Error("API.SSE ClearWriteDeadline error", "err", err)
+			return false
+		}
+
+		if writeErr != nil {
+			if errors.Is(writeErr, os.ErrDeadlineExceeded) {
+				slog.Error("API.SSE Write timeout")
+			} else {
+				slog.Error("API.SSE Write error", "err", writeErr)
+			}
+
+			return false
+		}
+
+		return true
+	}
 }

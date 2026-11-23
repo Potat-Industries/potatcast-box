@@ -2,6 +2,7 @@ package authorization
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -17,9 +18,14 @@ const (
 	StreamPolicyReservedOnly = "RESERVED"
 )
 
+var (
+	ErrProfileNotFound = errors.New("profile was not found")
+
+	validStreamKeyPattern = regexp.MustCompile(`^[\p{L}\p{N}_-]+$`)
+)
+
 func isValidStreamKey(streamKey string) bool {
-	regExp := regexp.MustCompile(`[\p{L}\p{N}_-]+`)
-	return regExp.MatchString(streamKey)
+	return validStreamKeyPattern.MatchString(streamKey)
 }
 
 // Create a new profile for the provided streamkey
@@ -49,13 +55,13 @@ func CreateProfile(streamKey string) (string, error) {
 
 	jsonData, err := json.MarshalIndent(profile, "", " ")
 	if err != nil {
-		slog.Error("Authorization: Error ocurred while trying to create profile", "err", err)
+		slog.Error("Authorization: Error occurred while trying to create profile", "err", err)
 		return "", err
 	}
 
 	err = os.WriteFile(profileFilePath, jsonData, 0644)
 	if err != nil {
-		slog.Error("Authorization: Error ocurred while trying to create profile", "err", err)
+		slog.Error("Authorization: Error occurred while trying to create profile", "err", err)
 		return "", err
 	}
 
@@ -65,7 +71,7 @@ func CreateProfile(streamKey string) (string, error) {
 // Update a current profile
 func UpdateProfile(token string, motd string, isPublic bool) error {
 	if !hasExistingBearerToken(token) {
-		return fmt.Errorf("profile was not found")
+		return ErrProfileNotFound
 	}
 
 	profile, err := GetPersonalProfile(token)
@@ -80,37 +86,34 @@ func UpdateProfile(token string, motd string, isPublic bool) error {
 
 	jsonData, err := json.MarshalIndent(profile, "", " ")
 	if err != nil {
-		slog.Error("Authorization: Error ocurred while trying to update profile", "err", err)
+		slog.Error("Authorization: Error occurred while trying to update profile", "err", err)
 		return err
 	}
 
 	profilePath := os.Getenv(environment.StreamProfilePath)
 	profileFilePath, err := getProfileFileNameByBearerToken(token)
 	if err != nil {
-		slog.Error("Authorization: Error ocurred while trying to update profile", "err", err)
+		slog.Error("Authorization: Error occurred while trying to update profile", "err", err)
 		return err
 	}
 
 	slog.Info("Authorization: Updated Profile", "streamKey", profile.StreamKey)
 	err = os.WriteFile(filepath.Join(profilePath, profileFilePath), jsonData, 0644)
 	if err != nil {
-		slog.Error("Authorization: Error ocurred while trying to update profile", "err", err)
+		slog.Error("Authorization: Error occurred while trying to update profile", "err", err)
 		return err
 	}
 
 	return nil
 }
 
+// RemoveProfile does not validate the key's characters: the file name comes from the
+// directory listing, and profiles created before validation was anchored must stay removable.
 func RemoveProfile(streamKey string) (bool, error) {
-	if !isValidStreamKey(streamKey) {
-		slog.Error("Authorization: Remove profile failed due to invalid streamkey", "streamKey", streamKey)
-		return false, fmt.Errorf("streamkey has invalid characters, only numbers, letters, dash and underscore allowed")
-	}
-
 	fileName, _ := getProfileFileNameByStreamKey(streamKey)
 	if fileName == "" {
-		slog.Info("Authorization: RemoveProfile could not find", "sreamKey", streamKey)
-		return false, fmt.Errorf("profile could not be found")
+		slog.Info("Authorization: RemoveProfile could not find", "streamKey", streamKey)
+		return false, ErrProfileNotFound
 	}
 
 	profilePath := os.Getenv(environment.StreamProfilePath)
@@ -139,7 +142,7 @@ func GetPublicProfile(bearerToken string) (*PublicProfile, error) {
 
 	var profile profile
 	if err := json.Unmarshal(data, &profile); err != nil {
-		slog.Error("Authorization: could not read. File may be corrupt", "err", err, "bearerToken", bearerToken)
+		slog.Error("Authorization: could not read. File may be corrupt", "err", err, "streamKey", streamKeyFromFileName(fileName))
 		return nil, err
 	}
 	profile.FileName = fileName
@@ -147,7 +150,7 @@ func GetPublicProfile(bearerToken string) (*PublicProfile, error) {
 	return profile.asPublicProfile(), nil
 }
 
-// Returns the publicly available profile
+// Returns the profile as served to its owner
 func GetPersonalProfile(bearerToken string) (*PersonalProfile, error) {
 	profilePath := os.Getenv(environment.StreamProfilePath)
 	assureProfilePath()
@@ -164,7 +167,7 @@ func GetPersonalProfile(bearerToken string) (*PersonalProfile, error) {
 
 	var profile profile
 	if err := json.Unmarshal(data, &profile); err != nil {
-		slog.Error("Authorization: could not read. File may be corrupt", "err", err, "bearerToken", bearerToken)
+		slog.Error("Authorization: could not read. File may be corrupt", "err", err, "streamKey", streamKeyFromFileName(fileName))
 		return nil, err
 	}
 	profile.FileName = fileName

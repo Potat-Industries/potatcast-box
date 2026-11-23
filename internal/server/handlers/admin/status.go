@@ -1,8 +1,6 @@
 package admin
 
 import (
-	"encoding/json"
-	"log/slog"
 	"net/http"
 
 	"github.com/glimesh/broadcast-box/internal/server/helpers"
@@ -10,22 +8,9 @@ import (
 )
 
 func StatusHandler(responseWriter http.ResponseWriter, request *http.Request) {
-	if isValidMethod := verifyValidMethod("GET", responseWriter, request); !isValidMethod {
+	if !requireAdmin(responseWriter, request, http.MethodGet) {
 		return
 	}
 
-	sessionResult := verifyAdminSession(request)
-	if !sessionResult.IsValid {
-		helpers.LogHTTPError(responseWriter, sessionResult.ErrorMessage, http.StatusUnauthorized)
-		return
-	}
-
-	sessions := manager.SessionsManager.GetSessionStates(true)
-
-	responseWriter.Header().Set("Content-Type", "application/json")
-
-	err := json.NewEncoder(responseWriter).Encode(sessions)
-	if err != nil {
-		slog.Error("API.AdminStatus Error", "err", err)
-	}
+	helpers.WriteJSON(responseWriter, http.StatusOK, manager.SessionsManager.GetSessionStates(true))
 }

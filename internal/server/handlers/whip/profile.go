@@ -2,7 +2,7 @@ package whip
 
 import (
 	"encoding/json"
-	"io"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -17,63 +17,57 @@ type updateProfilePayload struct {
 }
 
 func ProfileHandler(responseWriter http.ResponseWriter, request *http.Request) {
+	if !helpers.RequireMethod(responseWriter, request, http.MethodGet, http.MethodPost) {
+		return
+	}
+
 	token := helpers.ResolveBearerToken(request.Header.Get("Authorization"))
 
-	// Get Profile
-	if request.Method == "GET" {
-		profile, err := authorization.GetPersonalProfile(token)
-
-		if err != nil {
-			helpers.LogHTTPError(
-				responseWriter,
-				"Profile not found",
-				http.StatusNoContent)
-
-			return
-		}
-
-		if err := json.NewEncoder(responseWriter).Encode(profile); err != nil {
-			helpers.LogHTTPError(
-				responseWriter,
-				"Internal Server Error",
-				http.StatusInternalServerError)
-			slog.Error("Profile Encode Error", "err", err)
-		}
-
-		responseWriter.Header().Add("Content-Type", "application/json")
+	if request.Method == http.MethodGet {
+		getProfile(responseWriter, token)
+		return
 	}
 
-	// Update Profile
-	if request.Method == "POST" {
-		slog.Info("Updating Profile")
+	updateProfile(responseWriter, request, token)
+}
 
-		body, _ := io.ReadAll(request.Body)
-		var payload updateProfilePayload
-		if err := json.Unmarshal(body, &payload); err != nil {
-			helpers.LogHTTPError(
-				responseWriter,
-				"Internal Server Error",
-				http.StatusInternalServerError)
-			slog.Error("Profile Update Error", "err", err)
-			return
-		}
-
-		// Update stored profile
-		err := authorization.UpdateProfile(token, payload.Motd, payload.IsPublic)
-		if err != nil {
-			helpers.LogHTTPError(
-				responseWriter,
-				"Internal Server Error",
-				http.StatusInternalServerError)
-			slog.Error("Profile Update Error", "err", err)
-			return
-		}
-
-		profile, _ := authorization.GetPersonalProfile(token)
-
-		// Update current session
-		manager.SessionsManager.UpdateProfile(profile)
+func getProfile(responseWriter http.ResponseWriter, token string) {
+	profile, err := authorization.GetPersonalProfile(token)
+	if err != nil {
+		// The publish page probes this endpoint with plain stream keys, so a missing profile is not an error.
+		responseWriter.WriteHeader(http.StatusNoContent)
+		return
 	}
 
-	responseWriter.Header().Add("Content-Type", "application/json")
+	helpers.WriteJSON(responseWriter, http.StatusOK, profile)
+}
+
+func updateProfile(responseWriter http.ResponseWriter, request *http.Request, token string) {
+	var payload updateProfilePayload
+	if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+		helpers.LogHTTPError(responseWriter, "Invalid profile payload", http.StatusBadRequest)
+		return
+	}
+
+	if err := authorization.UpdateProfile(token, payload.Motd, payload.IsPublic); err != nil {
+		if errors.Is(err, authorization.ErrProfileNotFound) {
+			helpers.LogHTTPError(responseWriter, "Profile not found", http.StatusNotFound)
+			return
+		}
+
+		slog.Error("Profile Update Error", "err", err)
+		helpers.LogHTTPError(responseWriter, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	profile, err := authorization.GetPersonalProfile(token)
+	if err != nil {
+		slog.Error("Profile Update Error", "err", err)
+		helpers.LogHTTPError(responseWriter, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	manager.SessionsManager.UpdateProfile(profile)
+
+	helpers.WriteJSON(responseWriter, http.StatusOK, profile)
 }
