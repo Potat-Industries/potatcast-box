@@ -43,13 +43,14 @@ func TestLayerChangeHandlerRejectsMalformedBody(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, response.Code)
 }
 
-func TestStatusHandlerReturnsJSON(t *testing.T) {
+func TestStatusHandlerReturnsEmptyListWithoutStreams(t *testing.T) {
 	useEmptySessionManager(t)
 
 	response := httptest.NewRecorder()
 	statusHandler(response, httptest.NewRequest(http.MethodGet, "/api/status", nil))
 
 	require.Equal(t, http.StatusOK, response.Code)
+	require.JSONEq(t, `[]`, response.Body.String())
 	require.Equal(t, "application/json", testutil.SentContentType(response))
 }
 

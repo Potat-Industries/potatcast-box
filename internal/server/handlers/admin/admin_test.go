@@ -9,6 +9,7 @@ import (
 	"github.com/glimesh/broadcast-box/internal/environment"
 	"github.com/glimesh/broadcast-box/internal/server/authorization"
 	"github.com/glimesh/broadcast-box/internal/server/testutil"
+	"github.com/glimesh/broadcast-box/internal/webrtc/sessions/manager"
 	"github.com/stretchr/testify/require"
 )
 
@@ -111,4 +112,19 @@ func TestProfileHandlersRequireAdminToken(t *testing.T) {
 
 	require.Equal(t, http.StatusUnauthorized, response.Code)
 	require.False(t, authorization.IsProfileReserved("my_stream"))
+}
+
+func TestStatusHandlerReturnsEmptyListWithoutStreams(t *testing.T) {
+	t.Setenv(environment.FrontendAdminToken, adminToken)
+
+	previous := manager.SessionsManager
+	manager.SessionsManager = &manager.SessionManager{}
+	manager.SessionsManager.Setup()
+	t.Cleanup(func() { manager.SessionsManager = previous })
+
+	response := httptest.NewRecorder()
+	StatusHandler(response, adminRequest(http.MethodGet, "/api/admin/status", adminToken, ""))
+
+	require.Equal(t, http.StatusOK, response.Code)
+	require.JSONEq(t, `[]`, response.Body.String())
 }

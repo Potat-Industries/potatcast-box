@@ -24,14 +24,14 @@ func statusHandler(responseWriter http.ResponseWriter, request *http.Request) {
 }
 
 func streamStatusHandler(responseWriter http.ResponseWriter, streamKey string) {
-	session, ok := manager.SessionsManager.GetSessionByID(streamKey)
+	streamSession, ok := manager.SessionsManager.GetSessionByID(streamKey)
 	if !ok {
 		slog.Info("Could not find active stream", "streamKey", streamKey)
 		helpers.LogHTTPError(responseWriter, "No active stream found", http.StatusNotFound)
 		return
 	}
 
-	helpers.WriteJSON(responseWriter, http.StatusOK, session.GetStreamStatus())
+	helpers.WriteJSON(responseWriter, http.StatusOK, streamSession.GetStreamStatus())
 }
 
 func sessionStatusesHandler(responseWriter http.ResponseWriter) {
@@ -40,5 +40,5 @@ func sessionStatusesHandler(responseWriter http.ResponseWriter) {
 		return
 	}
 
-	helpers.WriteJSON(responseWriter, http.StatusOK, manager.SessionsManager.GetSessionStates(false))
+	helpers.WriteJSON(responseWriter, http.StatusOK, helpers.ActiveSessionStates(false))
 }

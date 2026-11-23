@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/glimesh/broadcast-box/internal/server/helpers"
-	"github.com/glimesh/broadcast-box/internal/webrtc/sessions/manager"
 )
 
 func StatusHandler(responseWriter http.ResponseWriter, request *http.Request) {
@@ -12,5 +11,5 @@ func StatusHandler(responseWriter http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	helpers.WriteJSON(responseWriter, http.StatusOK, manager.SessionsManager.GetSessionStates(true))
+	helpers.WriteJSON(responseWriter, http.StatusOK, helpers.ActiveSessionStates(true))
 }
