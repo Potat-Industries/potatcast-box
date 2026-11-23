@@ -5,8 +5,15 @@ linters:
     - bodyclose
     - errorlint
     - misspell
+  exclusions:
+    paths:
+      # npm packages occasionally ship Go files.
+      - web
 
 formatters:
   enable:
     - gofmt
     - goimports
+  exclusions:
+    paths:
+      - web
