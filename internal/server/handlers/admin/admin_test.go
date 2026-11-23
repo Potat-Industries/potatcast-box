@@ -3,6 +3,7 @@ package admin
 import (
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -103,14 +104,34 @@ func TestProfileAddHandlerRejectsPathTraversal(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, response.Code)
 }
 
-func TestProfileHandlersRequireAdminToken(t *testing.T) {
+func TestEveryAdminHandlerRequiresTheAdminToken(t *testing.T) {
 	t.Setenv(environment.FrontendAdminToken, adminToken)
 	t.Setenv(environment.StreamProfilePath, t.TempDir())
 
-	response := httptest.NewRecorder()
-	ProfileAddHandler(response, adminRequest(http.MethodPost, "/api/admin/profiles/add-profile", "wrong", `{"streamKey":"my_stream"}`))
+	for _, test := range []struct {
+		name    string
+		handler http.HandlerFunc
+		method  string
+		body    string
+	}{
+		{"login", LoginHandler, http.MethodPost, ""},
+		{"status", StatusHandler, http.MethodGet, ""},
+		{"logging", LoggingHandler, http.MethodGet, ""},
+		{"list profiles", ProfilesHandler, http.MethodGet, ""},
+		{"add profile", ProfileAddHandler, http.MethodPost, `{"streamKey":"my_stream"}`},
+		{"reset token", ProfilesResetTokenHandler, http.MethodPost, `{"streamKey":"my_stream"}`},
+		{"remove profile", ProfileRemoveHandler, http.MethodPost, `{"streamKey":"my_stream"}`},
+	} {
+		for _, token := range []string{"", "wrong"} {
+			t.Run(test.name+" with token "+strconv.Quote(token), func(t *testing.T) {
+				response := httptest.NewRecorder()
+				test.handler(response, adminRequest(test.method, "/api/admin", token, test.body))
 
-	require.Equal(t, http.StatusUnauthorized, response.Code)
+				require.Equal(t, http.StatusUnauthorized, response.Code)
+			})
+		}
+	}
+
 	require.False(t, authorization.IsProfileReserved("my_stream"))
 }
 

@@ -3,6 +3,8 @@ package handlers
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -107,6 +109,24 @@ func TestLogHandlerRequiresMatchingAPIKey(t *testing.T) {
 			require.Equal(t, http.StatusUnauthorized, response.Code)
 		})
 	}
+}
+
+func TestLogHandlerServesLogWithMatchingAPIKey(t *testing.T) {
+	logDirectory := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(logDirectory, "20260101"), []byte("log line\n"), 0600))
+
+	t.Setenv(environment.LoggingAPIEnabled, "TRUE")
+	t.Setenv(environment.LoggingAPIKey, "secret-key")
+	t.Setenv("LOGGING_DIRECTORY", logDirectory)
+
+	request := httptest.NewRequest(http.MethodGet, "/api/log", nil)
+	request.Header.Set("Authorization", "Bearer secret-key")
+
+	response := httptest.NewRecorder()
+	logHandler(response, request)
+
+	require.Equal(t, http.StatusOK, response.Code)
+	require.Equal(t, "log line\n", response.Body.String())
 }
 
 func TestLogHandlerReportsMissingLogFile(t *testing.T) {
