@@ -146,6 +146,8 @@ export interface localeInterface {
     login_input_dialog_placeholder: string;
 
     error_message_login_failed: string;
+    error_message_invalid_token: string;
+    error_message_server_unreachable: string;
 
     button_login_text: string;
   };

@@ -137,6 +137,8 @@ const locale_en: localeInterface = {
     login_input_dialog_message: "Insert admin token to log in",
     login_input_dialog_placeholder: "Insert admin token to log in",
     error_message_login_failed: "Login failed",
+    error_message_invalid_token: "The admin token was not accepted.",
+    error_message_server_unreachable: "Could not reach the server. Try again in a moment.",
 
     button_login_text: "Login",
   },

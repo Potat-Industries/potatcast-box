@@ -3,16 +3,24 @@ import TextInputDialog from "../shared/TextInputDialog";
 import ErrorMessagePanel from "../shared/ErrorMessagePanel";
 import AdminFrontpage from "./Frontpage";
 import { LocaleContext } from "../../providers/LocaleProvider";
-import {
-  ADMIN_TOKEN_STORAGE_KEY,
-  clearAdminToken,
-  getAdminAuthorizationHeader,
-  isInvalidAdminSessionResponse,
-} from "./adminAuth";
+import { ADMIN_TOKEN_STORAGE_KEY, clearAdminToken, getAdminAuthorizationHeader } from "./adminAuth";
 
-interface LoginResponse {
-  isValid: boolean;
-  errorMessage: string;
+const UNAUTHORIZED = 401;
+
+/** Resolves to whether the server accepts the token; rejects when the server could not decide. */
+async function isAdminTokenValid(token: string): Promise<boolean> {
+  const response = await fetch(`/api/admin/login`, {
+    method: "POST",
+    headers: {
+      Authorization: getAdminAuthorizationHeader(token),
+    },
+  });
+
+  if (!response.ok && response.status !== UNAUTHORIZED) {
+    throw new Error(`Admin login failed with status ${response.status}`);
+  }
+
+  return response.ok;
 }
 
 const Admin = () => {
@@ -21,50 +29,33 @@ const Admin = () => {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
 
   const login = (token: string) => {
-    fetch(`/api/admin/login`, {
-      method: "POST",
-      headers: {
-        Authorization: getAdminAuthorizationHeader(token),
-      },
-    })
-      .then((result) => {
-        if (isInvalidAdminSessionResponse(result.status)) {
-          setErrorMessage("Invalid login");
-          return;
-        }
-
-        return result.json();
-      })
-      .then((result: LoginResponse) => {
-        if (result.isValid) {
+    isAdminTokenValid(token)
+      .then((isValid) => {
+        if (isValid) {
           localStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, token);
-          setIsLoggedIn(() => true);
+          setErrorMessage("");
+          setIsLoggedIn(true);
         } else {
           clearAdminToken();
-          setErrorMessage(() => result.errorMessage);
+          setErrorMessage(locale.admin_login.error_message_invalid_token);
         }
-      });
+      })
+      .catch(() => setErrorMessage(locale.admin_login.error_message_server_unreachable));
   };
 
   useEffect(() => {
     const token = localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY);
-
     if (!token) {
       return;
     }
 
-    fetch(`/api/admin/login`, {
-      method: "POST",
-      headers: {
-        Authorization: getAdminAuthorizationHeader(token),
-      },
-    })
-      .then((result) => result.json())
-      .then((result: LoginResponse) => {
-        if (result.isValid) {
+    isAdminTokenValid(token)
+      .then((isValid) => {
+        if (isValid) {
           setIsLoggedIn(true);
         }
-      });
+      })
+      .catch((error) => console.error("Failed to verify the saved admin token", error));
   }, []);
 
   if (isLoggedIn) {
