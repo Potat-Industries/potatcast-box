@@ -7,9 +7,9 @@ import {
 } from "../adminAuth";
 
 const StatusPage = () => {
-  const { locale } = useContext(LocaleContext)
-  const [response, setResponse] = useState<StatusResult[]>()
-  const statusRefreshIntervalMs = 5000
+  const { locale } = useContext(LocaleContext);
+  const [response, setResponse] = useState<StatusResult[]>();
+  const statusRefreshIntervalMs = 5000;
 
   const refreshStatus = useCallback(() => {
     fetch(`/api/admin/status`, {
@@ -20,23 +20,23 @@ const StatusPage = () => {
     })
       .then((result) => {
         if (isInvalidAdminSessionResponse(result.status)) {
-          clearAdminToken()
+          clearAdminToken();
           return;
         }
 
         return result.json();
       })
       .then((result) => {
-        setResponse(() => result)
+        setResponse(() => result);
       });
   }, []);
 
   useEffect(() => {
-    refreshStatus()
+    refreshStatus();
     const interval = setInterval(refreshStatus, statusRefreshIntervalMs);
 
     return () => clearInterval(interval);
-  }, [refreshStatus, statusRefreshIntervalMs])
+  }, [refreshStatus, statusRefreshIntervalMs]);
 
   return (
     <div className="p-6 w-full max-w-6xl mx-auto">
@@ -46,30 +46,46 @@ const StatusPage = () => {
         <table className="min-w-full rounded-lg shadow">
           <thead className="text-white">
             <tr>
-              <th className="px-4 py-2 text-left">{locale.admin_page_status_page.table_header_stream_key}</th>
-              <th className="px-4 py-2 text-left">{locale.admin_page_status_page.table_header_is_public}</th>
-              <th className="px-4 py-2 text-left">{locale.admin_page_status_page.table_header_video_tracks}</th>
-              <th className="px-4 py-2 text-left">{locale.admin_page_status_page.table_header_audio_tracks}</th>
-              <th className="px-4 py-2 text-left">{locale.admin_page_status_page.table_header_sessions}</th>
-              <th className="px-4 py-2 text-left">{locale.admin_page_status_page.table_header_total_packets}</th>
+              <th className="px-4 py-2 text-left">
+                {locale.admin_page_status_page.table_header_stream_key}
+              </th>
+              <th className="px-4 py-2 text-left">
+                {locale.admin_page_status_page.table_header_is_public}
+              </th>
+              <th className="px-4 py-2 text-left">
+                {locale.admin_page_status_page.table_header_video_tracks}
+              </th>
+              <th className="px-4 py-2 text-left">
+                {locale.admin_page_status_page.table_header_audio_tracks}
+              </th>
+              <th className="px-4 py-2 text-left">
+                {locale.admin_page_status_page.table_header_sessions}
+              </th>
+              <th className="px-4 py-2 text-left">
+                {locale.admin_page_status_page.table_header_total_packets}
+              </th>
             </tr>
           </thead>
           <tbody>
             {response?.sort().map((status, index) => {
               const totalVideoPackets = status.videoTracks.reduce(
                 (sum, track) => sum + track.packetsReceived,
-                0
+                0,
               );
               const totalAudioPackets = status.audioTracks.reduce(
                 (sum, track) => sum + track.packetsReceived,
-                0
+                0,
               );
               const totalPackets = totalVideoPackets + totalAudioPackets;
 
               return (
                 <tr key={index} className="border-t">
                   <td className="px-4 py-2 font-medium ">{status.streamKey}</td>
-                  <td className="px-4 py-2 font-medium ">{status.isPublic ? locale.admin_page_status_page.yes : locale.admin_page_status_page.no}</td>
+                  <td className="px-4 py-2 font-medium ">
+                    {status.isPublic
+                      ? locale.admin_page_status_page.yes
+                      : locale.admin_page_status_page.no}
+                  </td>
                   <td className="px-4 py-2">{status.videoTracks.length}</td>
                   <td className="px-4 py-2">{status.audioTracks.length}</td>
                   <td className="px-4 py-2">{status.sessions.length}</td>
@@ -82,7 +98,7 @@ const StatusPage = () => {
       </div>
     </div>
   );
-}
+};
 export default StatusPage;
 
 interface WhepSession {

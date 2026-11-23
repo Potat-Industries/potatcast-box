@@ -16,8 +16,8 @@ const colorMapping = {
   Disabled: {
     base: "bg-gray-600",
     hover: "hover:bg-gray-600",
-  }
-}
+  },
+};
 
 interface Props {
   title?: string;
@@ -25,9 +25,9 @@ interface Props {
   isDisabled?: boolean;
   onClick?: () => void;
 
-  color?: "Accept" | "Deny"
-  iconLeft?: IconType
-  iconRight?: IconType
+  color?: "Accept" | "Deny";
+  iconLeft?: IconType;
+  iconRight?: IconType;
   classNames?: string;
 
   stretch?: boolean;
@@ -35,10 +35,12 @@ interface Props {
 }
 
 export default function Button(props: Props) {
-
-  const color = props.isDisabled ? colorMapping.Disabled
-    : props.color === "Accept" ? colorMapping.Accept
-      : props.color === "Deny" ? colorMapping.Deny
+  const color = props.isDisabled
+    ? colorMapping.Disabled
+    : props.color === "Accept"
+      ? colorMapping.Accept
+      : props.color === "Deny"
+        ? colorMapping.Deny
         : colorMapping.Default;
 
   return (
@@ -46,27 +48,14 @@ export default function Button(props: Props) {
       className={`flex text-white font-medium px-4 py-2 rounded ${props.center === true ? "justify-center" : ""} ${props.stretch ? "w-full" : "w-fit"} ${color.base} ${color.hover} ${props.classNames}`}
       onClick={!props.isDisabled ? props.onClick : undefined}
     >
-      {props.iconLeft && (
-        <div className="mr-2">
-          {getIcon(props.iconLeft)}
-        </div>
-      )}
+      {props.iconLeft && <div className="mr-2">{getIcon(props.iconLeft)}</div>}
 
       <div className="flex flex-col">
-        <div className="font-bold">
-          {props.title}
-        </div>
-        <div className="font-light">
-          {props.subTitle}
-        </div>
+        <div className="font-bold">{props.title}</div>
+        <div className="font-light">{props.subTitle}</div>
       </div>
 
-      {props.iconRight && (
-        <div className="ml-2">
-          {getIcon(props.iconRight)}
-        </div>
-      )}
+      {props.iconRight && <div className="ml-2">{getIcon(props.iconRight)}</div>}
     </button>
   );
 }
-

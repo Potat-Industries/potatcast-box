@@ -1,17 +1,18 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 @layer base {
-	body {
-		margin: 0;
-		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
-			'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-		-webkit-font-smoothing: antialiased;
-		-moz-osx-font-smoothing: grayscale;
-	}
+  body {
+    margin: 0;
+    font-family:
+      -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell",
+      "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-	code {
-		font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
-	}
+  code {
+    font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+  }
 }
 
 /*
@@ -23,31 +24,31 @@
   color utility to any element that depends on these defaults.
 */
 @layer base {
-	*,
-	::after,
-	::before,
-	::backdrop,
-	::file-selector-button {
-		border-color: var(--color-gray-200, currentColor);
-	}
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
 }
 
 @theme {
-	--animate-reaction-float: reaction-float 1400ms ease-out forwards;
+  --animate-reaction-float: reaction-float 1400ms ease-out forwards;
 
-	@keyframes reaction-float {
-		0% {
-			opacity: 0;
-			transform: translate3d(var(--reaction-x, 0), 8px, 0) scale(0.7);
-		}
+  @keyframes reaction-float {
+    0% {
+      opacity: 0;
+      transform: translate3d(var(--reaction-x, 0), 8px, 0) scale(0.7);
+    }
 
-		18% {
-			opacity: 1;
-		}
+    18% {
+      opacity: 1;
+    }
 
-		100% {
-			opacity: 0;
-			transform: translate3d(var(--reaction-x, 0), -64px, 0) scale(1.2);
-		}
-	}
+    100% {
+      opacity: 0;
+      transform: translate3d(var(--reaction-x, 0), -64px, 0) scale(1.2);
+    }
+  }
 }

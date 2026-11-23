@@ -22,12 +22,20 @@ const PlayerPage = () => {
   const { cinemaMode, toggleCinemaMode } = useContext(CinemaModeContext);
   const [streamKeys, setStreamKeys] = useState<string[]>([window.location.pathname.substring(1)]);
   const [isModalOpen, setIsModelOpen] = useState<boolean>(false);
-  const [isChatOpen, setIsChatOpen] = useState<boolean>(() => localStorage.getItem("chat-open") !== "false");
+  const [isChatOpen, setIsChatOpen] = useState<boolean>(
+    () => localStorage.getItem("chat-open") !== "false",
+  );
   const [chatAdapters, setChatAdapters] = useState<Record<string, ChatAdapter | undefined>>({});
-  const [reactionSenders, setReactionSenders] = useState<Record<string, ReactionSender | undefined>>({});
-  const [streamStatuses, setStreamStatuses] = useState<Record<string, StreamStatus | undefined>>({});
+  const [reactionSenders, setReactionSenders] = useState<
+    Record<string, ReactionSender | undefined>
+  >({});
+  const [streamStatuses, setStreamStatuses] = useState<Record<string, StreamStatus | undefined>>(
+    {},
+  );
   const [isDisplayNameModalOpen, setIsDisplayNameModalOpen] = useState<boolean>(false);
-  const [chatDisplayName, setChatDisplayName] = useState<string>(() => localStorage.getItem("chatDisplayName") ?? "");
+  const [chatDisplayName, setChatDisplayName] = useState<string>(
+    () => localStorage.getItem("chatDisplayName") ?? "",
+  );
 
   useEffect(() => {
     localStorage.setItem("chat-open", String(isChatOpen));
@@ -41,31 +49,37 @@ const PlayerPage = () => {
     setIsModelOpen((prev) => !prev);
   };
 
-  const setStreamChatAdapter = useCallback((streamKey: string, adapter: ChatAdapter | undefined) => {
-    setChatAdapters((current) => {
-      if (current[streamKey] === adapter) {
-        return current;
-      }
+  const setStreamChatAdapter = useCallback(
+    (streamKey: string, adapter: ChatAdapter | undefined) => {
+      setChatAdapters((current) => {
+        if (current[streamKey] === adapter) {
+          return current;
+        }
 
-      return {
-        ...current,
-        [streamKey]: adapter,
-      };
-    });
-  }, []);
+        return {
+          ...current,
+          [streamKey]: adapter,
+        };
+      });
+    },
+    [],
+  );
 
-  const setStreamReactionSender = useCallback((streamKey: string, sender: ReactionSender | undefined) => {
-    setReactionSenders((current) => {
-      if (current[streamKey] === sender) {
-        return current;
-      }
+  const setStreamReactionSender = useCallback(
+    (streamKey: string, sender: ReactionSender | undefined) => {
+      setReactionSenders((current) => {
+        if (current[streamKey] === sender) {
+          return current;
+        }
 
-      return {
-        ...current,
-        [streamKey]: sender,
-      };
-    });
-  }, []);
+        return {
+          ...current,
+          [streamKey]: sender,
+        };
+      });
+    },
+    [],
+  );
 
   const setStreamStatus = useCallback((streamKey: string, status: StreamStatus | undefined) => {
     setStreamStatuses((current) => {
@@ -113,16 +127,29 @@ const PlayerPage = () => {
   const playerGridColumns = isSingleStream ? 1 : 2;
   const playerGridGap = 8;
   const playerGridRowHeight = 16;
-  const playerGridItemPixelWidth = (playerGridWidth - playerGridGap * (playerGridColumns - 1)) / playerGridColumns;
+  const playerGridItemPixelWidth =
+    (playerGridWidth - playerGridGap * (playerGridColumns - 1)) / playerGridColumns;
   const isMobilePlayer = window.innerWidth < 768;
   const playerGridItemWidth = 12 / playerGridColumns;
-  const isSingleStreamChatSidebar = isSingleStream && isChatOpen && playerGridItemPixelWidth >= 1024;
+  const isSingleStreamChatSidebar =
+    isSingleStream && isChatOpen && playerGridItemPixelWidth >= 1024;
   const chatSidebarWidth = cinemaMode ? 320 : 336;
-  const chatBelowHeight = isChatOpen && !isSingleStreamChatSidebar ? (isSingleStream ? 336 : 388) : 0;
-  const playerWidth = Math.max(0, playerGridItemPixelWidth - (isSingleStreamChatSidebar ? chatSidebarWidth : 0));
-  const playerGridCardHeight = Math.ceil(playerWidth * 9 / 16 + 24 + chatBelowHeight);
-  const playerGridCardRows = Math.max(1, Math.ceil((playerGridCardHeight + playerGridGap) / (playerGridRowHeight + playerGridGap)));
-  const chatPanelVariant = isSingleStreamChatSidebar ? "sidebar" : (isSingleStream ? "compact-below" : "below");
+  const chatBelowHeight =
+    isChatOpen && !isSingleStreamChatSidebar ? (isSingleStream ? 336 : 388) : 0;
+  const playerWidth = Math.max(
+    0,
+    playerGridItemPixelWidth - (isSingleStreamChatSidebar ? chatSidebarWidth : 0),
+  );
+  const playerGridCardHeight = Math.ceil((playerWidth * 9) / 16 + 24 + chatBelowHeight);
+  const playerGridCardRows = Math.max(
+    1,
+    Math.ceil((playerGridCardHeight + playerGridGap) / (playerGridRowHeight + playerGridGap)),
+  );
+  const chatPanelVariant = isSingleStreamChatSidebar
+    ? "sidebar"
+    : isSingleStream
+      ? "compact-below"
+      : "below";
 
   return (
     <div>
@@ -155,7 +182,9 @@ const PlayerPage = () => {
         />
       )}
 
-      <div className={`flex flex-col w-full items-center ${!cinemaMode && "mx-auto px-2 py-2 container"}`} >
+      <div
+        className={`flex flex-col w-full items-center ${!cinemaMode && "mx-auto px-2 py-2 container"}`}
+      >
         <div ref={playerGridRef} className="w-full">
           <ReactGridLayout
             dragConfig={{
@@ -172,13 +201,33 @@ const PlayerPage = () => {
               h: playerGridCardRows,
             }))}
             width={playerGridWidth}
-            gridConfig={{ cols: 12, rowHeight: playerGridRowHeight, margin: [playerGridGap, playerGridGap], containerPadding: [0, 0] }}
+            gridConfig={{
+              cols: 12,
+              rowHeight: playerGridRowHeight,
+              margin: [playerGridGap, playerGridGap],
+              containerPadding: [0, 0],
+            }}
           >
             {streamKeys.map((streamKey) => {
               return (
-                <div key={`${streamKey}_player_card`} className="min-w-0 flex h-full flex-col gap-1 overflow-hidden">
-                  <div className={isSingleStream ? "relative flex min-h-0 flex-1 flex-col gap-4 w-full" : "flex min-h-0 flex-1 flex-col gap-1"}>
-                    <div className={isSingleStream ? `min-w-0 min-h-0 flex-1 transition-[margin] duration-200 ${isSingleStreamChatSidebar ? (cinemaMode ? "mr-80" : "mr-[21rem]") : ""}` : "min-w-0 min-h-0 flex-1"}>
+                <div
+                  key={`${streamKey}_player_card`}
+                  className="min-w-0 flex h-full flex-col gap-1 overflow-hidden"
+                >
+                  <div
+                    className={
+                      isSingleStream
+                        ? "relative flex min-h-0 flex-1 flex-col gap-4 w-full"
+                        : "flex min-h-0 flex-1 flex-col gap-1"
+                    }
+                  >
+                    <div
+                      className={
+                        isSingleStream
+                          ? `min-w-0 min-h-0 flex-1 transition-[margin] duration-200 ${isSingleStreamChatSidebar ? (cinemaMode ? "mr-80" : "mr-[21rem]") : ""}`
+                          : "min-w-0 min-h-0 flex-1"
+                      }
+                    >
                       <Player
                         key={`${streamKey}_player`}
                         streamKey={streamKey}
@@ -189,7 +238,9 @@ const PlayerPage = () => {
                         onChatAdapterChange={setStreamChatAdapter}
                         onReactionSenderChange={setStreamReactionSender}
                         onStreamStatusChange={setStreamStatus}
-                        onCloseStream={isSingleStream ? () => navigate("/") : () => removeStream(streamKey)}
+                        onCloseStream={
+                          isSingleStream ? () => navigate("/") : () => removeStream(streamKey)
+                        }
                       />
                     </div>
 
@@ -218,7 +269,11 @@ const PlayerPage = () => {
         {/*Footer menu*/}
         <div className="mt-4 flex flex-row gap-2">
           <Button
-            title={cinemaMode ? locale.player_page.cinema_mode_disable : locale.player_page.cinema_mode_enable}
+            title={
+              cinemaMode
+                ? locale.player_page.cinema_mode_disable
+                : locale.player_page.cinema_mode_enable
+            }
             onClick={toggleCinemaMode}
             iconRight="CodeBracketSquare"
           />

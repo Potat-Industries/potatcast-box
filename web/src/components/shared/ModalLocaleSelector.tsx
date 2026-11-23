@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from "react";
 import { LocaleContext, LocaleTypes } from "../../providers/LocaleProvider";
-import Button from '../shared/Button';
+import Button from "../shared/Button";
 import { getIcon } from "./Icons";
 
 interface Props {
@@ -11,33 +11,30 @@ interface Props {
 }
 
 export function LocalesModal(props: Props) {
-  const { onClose, canCloseOnBackgroundClick } = props
-  const { setLocale } = useContext(LocaleContext)
+  const { onClose, canCloseOnBackgroundClick } = props;
+  const { setLocale } = useContext(LocaleContext);
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (!isOpen) {
-      onClose?.()
+      onClose?.();
     }
-  }, [isOpen, onClose])
+  }, [isOpen, onClose]);
 
   if (!isOpen) {
     return (
-      <div className="cursor-default select-none flex justify-end flex-row w-min" >
-        <div
-          className="flex text-lg gap-2 w-min"
-          onClick={() => setIsOpen((prev) => !prev)}>
+      <div className="cursor-default select-none flex justify-end flex-row w-min">
+        <div className="flex text-lg gap-2 w-min" onClick={() => setIsOpen((prev) => !prev)}>
           Locales
           {getIcon("Language")}
         </div>
-      </div>)
+      </div>
+    );
   }
 
   return (
-    <div className="cursor-default select-none flex justify-end flex-row w-min" >
-      <div
-        className="flex text-lg gap-2 w-min"
-        onClick={() => setIsOpen((prev) => !prev)}>
+    <div className="cursor-default select-none flex justify-end flex-row w-min">
+      <div className="flex text-lg gap-2 w-min" onClick={() => setIsOpen((prev) => !prev)}>
         Locales
         {getIcon("Language")}
       </div>
@@ -51,15 +48,17 @@ export function LocalesModal(props: Props) {
             className="flex flex-col p-4 w-52 bg-gray-800 gap-2 h-min border-gray-500 border rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            {LocaleTypes.map((localeSelection) => <Button
-              key={localeSelection.locale}
-              title={localeSelection.name}
-              stretch
-              onClick={() => {
-                setLocale(localeSelection)
-                setIsOpen(false)
-              }}
-            />)}
+            {LocaleTypes.map((localeSelection) => (
+              <Button
+                key={localeSelection.locale}
+                title={localeSelection.name}
+                stretch
+                onClick={() => {
+                  setLocale(localeSelection);
+                  setIsOpen(false);
+                }}
+              />
+            ))}
           </div>
         </div>
       )}
@@ -67,4 +66,4 @@ export function LocalesModal(props: Props) {
   );
 }
 
-export default LocalesModal
+export default LocalesModal;

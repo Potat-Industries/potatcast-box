@@ -12,7 +12,7 @@ const CurrentViewersComponent = (props: CurrentViewersComponentProps) => {
       <UsersIcon className={"size-4"} />
       {currentViewersCount}
     </div>
-  )
-}
+  );
+};
 
-export default CurrentViewersComponent
+export default CurrentViewersComponent;

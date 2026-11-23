@@ -10,7 +10,7 @@ import { LocaleContext } from "../../providers/LocaleProvider";
 import { clearAdminToken } from "./adminAuth";
 const AdminFrontpage = () => {
   const navigation = useNavigate();
-  const { locale } = useContext(LocaleContext)
+  const { locale } = useContext(LocaleContext);
   const [currentMenu, setCurrentMenu] = useState<string>("Status");
 
   const onChangeMenu = (name: string) => setCurrentMenu(() => name);
@@ -27,14 +27,36 @@ const AdminFrontpage = () => {
         <div className="flex-1 space-x-2">
           <Card title={locale.admin_page.menu_settings}>
             <div className="flex flex-col h-full p-2 space-y-2">
-              <Button title={locale.admin_page.menu_status} stretch onClick={() => onChangeMenu("Status")} />
-              <Button title={locale.admin_page.menu_profiles} stretch onClick={() => onChangeMenu("Profiles")} />
-              <Button title={locale.admin_page.menu_api} stretch onClick={() => onChangeMenu("API")} isDisabled />
-              <Button title={locale.admin_page.menu_logging} stretch onClick={() => onChangeMenu("Logging")} />
+              <Button
+                title={locale.admin_page.menu_status}
+                stretch
+                onClick={() => onChangeMenu("Status")}
+              />
+              <Button
+                title={locale.admin_page.menu_profiles}
+                stretch
+                onClick={() => onChangeMenu("Profiles")}
+              />
+              <Button
+                title={locale.admin_page.menu_api}
+                stretch
+                onClick={() => onChangeMenu("API")}
+                isDisabled
+              />
+              <Button
+                title={locale.admin_page.menu_logging}
+                stretch
+                onClick={() => onChangeMenu("Logging")}
+              />
             </div>
 
             <div className="flex flex-col p-2 space-y-2">
-              <Button title={locale.admin_page.menu_settings} stretch onClick={() => onChangeMenu("Settings")} isDisabled />
+              <Button
+                title={locale.admin_page.menu_settings}
+                stretch
+                onClick={() => onChangeMenu("Settings")}
+                isDisabled
+              />
               <Button title={locale.admin_page.menu_logout} stretch onClick={logout} />
             </div>
           </Card>

@@ -16,7 +16,7 @@ interface LoginResponse {
 }
 
 const Admin = () => {
-  const { locale } = useContext(LocaleContext)
+  const { locale } = useContext(LocaleContext);
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
 

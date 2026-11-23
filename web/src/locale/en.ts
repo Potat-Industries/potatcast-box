@@ -1,10 +1,11 @@
-import { localeInterface } from "./localeInterface"
+import { localeInterface } from "./localeInterface";
 
 const locale_en: localeInterface = {
   locale: "en",
   frontpage: {
     welcome: "Welcome to Broadcast Box",
-    welcome_subtitle: "Broadcast Box is a tool that allows you to efficiently stream high-quality video in real time, using the latest in video codecs and WebRTC technology.",
+    welcome_subtitle:
+      "Broadcast Box is a tool that allows you to efficiently stream high-quality video in real time, using the latest in video codecs and WebRTC technology.",
 
     toggle_watch: "I want to watch",
     toggle_stream: "I want to stream",
@@ -49,7 +50,7 @@ const locale_en: localeInterface = {
     packets_written: "Packets written",
     last_key_frame: "Last key frame",
     timestamp: "Timestamp",
-    sequence_number: "Seq. number"
+    sequence_number: "Seq. number",
   },
 
   player_header: {
@@ -58,9 +59,12 @@ const locale_en: localeInterface = {
     warning: "Warning",
 
     mediaAccessError_default: "Could not access your media devices",
-    mediaAccessError_noMediaDevices: "MediaDevices API was not found. Publishing in Broadcast Box requires HTTPS",
-    mediaAccessError_notAllowedError: "You can't publish stream using your camera, access has been disabled.",
-    mediaAccessError_notFoundError: "Seems like you don't have camera. Or the access to it is blocked\nCheck camera settings, browser permissions and system permissions.",
+    mediaAccessError_noMediaDevices:
+      "MediaDevices API was not found. Publishing in Broadcast Box requires HTTPS",
+    mediaAccessError_notAllowedError:
+      "You can't publish stream using your camera, access has been disabled.",
+    mediaAccessError_notFoundError:
+      "Seems like you don't have camera. Or the access to it is blocked\nCheck camera settings, browser permissions and system permissions.",
 
     connection_established: "Live: Currently streaming to",
     connection_disconnected: "WebRTC has disconnected or failed to connect at all",
@@ -70,7 +74,7 @@ const locale_en: localeInterface = {
     publish_screen: "Publish Screen/Window/Tab",
     publish_webcam: "Publish Webcam",
 
-    button_end_stream: "End stream"
+    button_end_stream: "End stream",
   },
 
   player_page: {
@@ -87,11 +91,11 @@ const locale_en: localeInterface = {
     message_loading_video: "Loading video",
     message_error: "Error",
 
-    stream_status_offline: "Offline"
+    stream_status_offline: "Offline",
   },
 
   stream_status: {
-    message_current_viewers: "Current Viewers"
+    message_current_viewers: "Current Viewers",
   },
 
   profile_settings: {
@@ -103,7 +107,7 @@ const locale_en: localeInterface = {
     toggle_stream_privacy_title_right: "Public",
 
     input_motd_label: "Message of the Day",
-    button_save_label: "Save"
+    button_save_label: "Save",
   },
 
   admin_login: {
@@ -112,7 +116,7 @@ const locale_en: localeInterface = {
     login_input_dialog_placeholder: "Insert admin token to log in",
     error_message_login_failed: "Login failed",
 
-    button_login_text: "Login"
+    button_login_text: "Login",
   },
 
   admin_page: {
@@ -122,19 +126,19 @@ const locale_en: localeInterface = {
     menu_logout: "Logout",
     menu_profiles: "Profiles",
     menu_settings: "Settings",
-    menu_status: "Status"
+    menu_status: "Status",
   },
 
   admin_page_api: {
     title: "API Settings",
     table_header_setting_name: "Setting",
-    table_header_value: "Value"
+    table_header_value: "Value",
   },
 
   admin_page_logging: {
     title: "Logging",
     table_header_setting_name: "Setting",
-    table_header_value: "Value"
+    table_header_value: "Value",
   },
 
   admin_page_profiles: {
@@ -155,7 +159,7 @@ const locale_en: localeInterface = {
     button_add_profile: "Add profile",
 
     yes: "Yes",
-    no: "No"
+    no: "No",
   },
 
   admin_page_status_page: {
@@ -169,17 +173,17 @@ const locale_en: localeInterface = {
     table_header_total_packets: "Total Packets",
 
     yes: "yes",
-    no: "no"
+    no: "no",
   },
 
   shared_component_card: {
-    button_accept: "Accept"
+    button_accept: "Accept",
   },
   shared_component_text_input_modal: {
-    button_accept: "Accept"
+    button_accept: "Accept",
   },
   shared_component_text_input_dialog: {
-    button_accept: "Accept"
+    button_accept: "Accept",
   },
 
   chat: {
@@ -200,5 +204,5 @@ const locale_en: localeInterface = {
     modal_display_name_message: "Set your display name for chat",
     modal_display_name_placeholder: "Enter display name",
   },
-}
-export default locale_en
+};
+export default locale_en;
