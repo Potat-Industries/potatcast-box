@@ -2,9 +2,11 @@ package chatdc
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/glimesh/broadcast-box/internal/chat"
 	"github.com/pion/webrtc/v4"
@@ -28,6 +30,16 @@ const (
 	outboundTypeMessage   = "chat.message"
 	outboundTypeAck       = "chat.ack"
 	outboundTypeError     = "chat.error"
+)
+
+const (
+	maxTextLength        = 2000
+	maxDisplayNameLength = 80
+)
+
+var (
+	errInvalidMessageLength     = errors.New("invalid message length")
+	errInvalidDisplayNameLength = errors.New("invalid display name length")
 )
 
 type inboundMessage struct {
@@ -133,16 +145,9 @@ func (h *Handler) Bind(streamKey string, peerID string, dataChannel *webrtc.Data
 
 		switch inbound.Type {
 		case inboundTypeSend:
-			text := strings.TrimSpace(inbound.Text)
-			displayName := strings.TrimSpace(inbound.DisplayName)
-
-			if len(text) < 1 || len(text) > 2000 {
-				_ = send(outboundMessage{Type: outboundTypeError, Error: "invalid message length", ClientMessage: inbound.ClientMessage})
-				return
-			}
-
-			if len(displayName) < 1 || len(displayName) > 80 {
-				_ = send(outboundMessage{Type: outboundTypeError, Error: "invalid display name length", ClientMessage: inbound.ClientMessage})
+			text, displayName, err := normalizeChatMessage(inbound.Text, inbound.DisplayName)
+			if err != nil {
+				_ = send(outboundMessage{Type: outboundTypeError, Error: err.Error(), ClientMessage: inbound.ClientMessage})
 				return
 			}
 
@@ -166,4 +171,20 @@ func (h *Handler) Bind(streamKey string, peerID string, dataChannel *webrtc.Data
 		slog.Error("ChatDC.Bind: error", "streamKey", streamKey, "peerID", peerID, "err", err)
 		runCloseSubscription()
 	})
+}
+
+// Lengths are counted in characters rather than bytes so non-ASCII text gets the documented limits.
+func normalizeChatMessage(rawText string, rawDisplayName string) (text string, displayName string, err error) {
+	text = strings.TrimSpace(rawText)
+	displayName = strings.TrimSpace(rawDisplayName)
+
+	if textLength := utf8.RuneCountInString(text); textLength < 1 || textLength > maxTextLength {
+		return "", "", errInvalidMessageLength
+	}
+
+	if nameLength := utf8.RuneCountInString(displayName); nameLength < 1 || nameLength > maxDisplayNameLength {
+		return "", "", errInvalidDisplayNameLength
+	}
+
+	return text, displayName, nil
 }
