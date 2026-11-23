@@ -8,6 +8,7 @@ import (
 
 	"github.com/glimesh/broadcast-box/internal/environment"
 	"github.com/glimesh/broadcast-box/internal/server/authorization"
+	"github.com/glimesh/broadcast-box/internal/server/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -78,7 +79,7 @@ func TestProfileHandlersManageProfiles(t *testing.T) {
 	list := httptest.NewRecorder()
 	ProfilesHandler(list, adminRequest(http.MethodGet, "/api/admin/profiles", adminToken, ""))
 	require.Equal(t, http.StatusOK, list.Code)
-	require.Equal(t, "application/json", list.Header().Get("Content-Type"))
+	require.Equal(t, "application/json", testutil.SentContentType(list))
 	require.Contains(t, list.Body.String(), `"streamKey":"my_stream"`)
 
 	reset := httptest.NewRecorder()

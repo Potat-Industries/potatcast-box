@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/glimesh/broadcast-box/internal/environment"
+	"github.com/glimesh/broadcast-box/internal/server/testutil"
 	"github.com/glimesh/broadcast-box/internal/webrtc/sessions/manager"
 	"github.com/stretchr/testify/require"
 )
@@ -49,7 +50,7 @@ func TestStatusHandlerReturnsJSON(t *testing.T) {
 	statusHandler(response, httptest.NewRequest(http.MethodGet, "/api/status", nil))
 
 	require.Equal(t, http.StatusOK, response.Code)
-	require.Equal(t, "application/json", response.Header().Get("Content-Type"))
+	require.Equal(t, "application/json", testutil.SentContentType(response))
 }
 
 func TestStatusHandlerUnknownStreamKey(t *testing.T) {
@@ -78,7 +79,7 @@ func TestSSEHandlerRejectsUnknownSession(t *testing.T) {
 	sseHandler(response, httptest.NewRequest(http.MethodGet, "/api/sse/unknown", nil))
 
 	require.Equal(t, http.StatusBadRequest, response.Code)
-	require.NotEqual(t, "text/event-stream", response.Header().Get("Content-Type"))
+	require.NotEqual(t, "text/event-stream", testutil.SentContentType(response))
 }
 
 func TestLogHandlerRequiresMatchingAPIKey(t *testing.T) {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/glimesh/broadcast-box/internal/environment"
 	"github.com/glimesh/broadcast-box/internal/server/authorization"
+	"github.com/glimesh/broadcast-box/internal/server/testutil"
 	"github.com/glimesh/broadcast-box/internal/webrtc/sessions/manager"
 	"github.com/stretchr/testify/require"
 )
@@ -53,7 +54,7 @@ func TestProfileHandlerUpdatesProfile(t *testing.T) {
 	get := httptest.NewRecorder()
 	ProfileHandler(get, profileRequest(http.MethodGet, token, ""))
 	require.Equal(t, http.StatusOK, get.Code)
-	require.Equal(t, "application/json", get.Header().Get("Content-Type"))
+	require.Equal(t, "application/json", testutil.SentContentType(get))
 	require.JSONEq(t, `{"streamKey":"my_stream","isActive":false,"isPublic":false,"motd":"hello"}`, get.Body.String())
 }
 

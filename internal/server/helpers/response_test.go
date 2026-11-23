@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/glimesh/broadcast-box/internal/server/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -15,7 +16,7 @@ func TestWriteJSONSetsContentTypeBeforeBody(t *testing.T) {
 	WriteJSON(recorder, http.StatusOK, map[string]string{"streamKey": "test"})
 
 	require.Equal(t, http.StatusOK, recorder.Code)
-	require.Equal(t, "application/json", recorder.Header().Get("Content-Type"))
+	require.Equal(t, "application/json", testutil.SentContentType(recorder))
 	require.JSONEq(t, `{"streamKey":"test"}`, recorder.Body.String())
 }
 
