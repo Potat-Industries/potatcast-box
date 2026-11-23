@@ -1,4 +1,4 @@
-﻿import React, { useContext, useRef } from "react";
+import React, { useContext, useRef } from "react";
 import { LocaleContext } from "../../providers/LocaleProvider";
 
 interface Props<T extends string | number> {

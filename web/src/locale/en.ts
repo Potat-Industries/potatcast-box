@@ -78,20 +78,42 @@ const locale_en: localeInterface = {
   },
 
   player_page: {
-    cinema_mode_disable: "Disable cinema mode",
     cinema_mode_enable: "Enable cinema mode",
+    cinema_mode_disable: "Disable cinema mode",
 
     modal_add_stream_title: "Add stream",
     modal_add_stream_message: "Insert stream key to add to multi stream",
     modal_add_stream_placeholder: "Insert the key of the stream you want to add",
+    modal_add_stream_already_added: "That stream is already on this page",
   },
 
   player: {
     message_is_not_online: "is not currently streaming",
+    message_offline_hint: "Playback starts automatically when the stream goes live.",
     message_loading_video: "Loading video",
-    message_error: "Error",
+    message_reconnecting: "Connection lost. Reconnecting…",
+    message_rejected: "You are not allowed to watch this stream.",
+    button_retry: "Retry now",
 
+    status_live: "Live",
     stream_status_offline: "Offline",
+
+    button_play: "Play",
+    button_pause: "Pause",
+    button_mute: "Mute",
+    button_unmute: "Unmute",
+    button_tap_to_unmute: "Tap to unmute",
+    volume_label: "Volume",
+    button_fullscreen_enter: "Fullscreen",
+    button_fullscreen_exit: "Exit fullscreen",
+    button_picture_in_picture: "Picture-in-picture",
+    button_show_chat: "Show chat",
+    button_hide_chat: "Hide chat",
+    button_close_stream: "Close stream",
+
+    menu_quality: "Quality",
+    menu_audio_track: "Audio track",
+    menu_option_auto: "Auto",
   },
 
   stream_status: {
@@ -181,6 +203,7 @@ const locale_en: localeInterface = {
   },
   shared_component_text_input_modal: {
     button_accept: "Accept",
+    button_close: "Close",
   },
   shared_component_text_input_dialog: {
     button_accept: "Accept",
@@ -188,21 +211,51 @@ const locale_en: localeInterface = {
 
   chat: {
     title: "Chat",
+    tab_stream_chat: "Stream chat",
+    tab_twitch: "Twitch",
+    stream_picker_label: "Chat for stream",
+    button_close_panel: "Close panel",
+    unread_messages: "unread messages",
+
     placeholder_input: "Write a message",
     button_reaction_title: "Send reaction",
-    button_change_display_name_title: "Change display name",
     button_send_title: "Send message",
-    status_connecting: "connecting",
-    status_connected: "connected",
-    status_error: "error",
-    status_disconnected: "disconnected",
+    button_new_messages: "New messages",
     no_messages_yet: "No chat messages yet.",
-    error_failed_to_connect: "Failed to connect chat",
+
+    status_connecting: "Connecting to chat…",
+    status_disconnected: "Chat is disconnected",
     error_not_connected: "Chat is not connected",
     error_failed_to_send: "Failed to send message",
-    modal_display_name_title: "Display name",
-    modal_display_name_message: "Set your display name for chat",
-    modal_display_name_placeholder: "Enter display name",
+
+    display_name_prompt: "Choose a display name to start chatting",
+    display_name_label: "Display name",
+    display_name_placeholder: "Enter display name",
+    chatting_as: "Chatting as",
+    button_change_display_name_title: "Change display name",
+    button_save_display_name: "Save",
+    button_cancel: "Cancel",
+  },
+
+  twitch: {
+    channel_label: "Twitch channel",
+    channel_placeholder: "Channel name or twitch.tv link",
+    channel_help:
+      "Show a Twitch channel’s chat next to this stream. Your choice is saved in this browser for this stream.",
+    error_invalid_channel: "Enter a valid Twitch channel name or link.",
+    button_open_chat: "Open chat",
+    button_change_channel: "Change channel",
+    button_open_popout: "Open in new window",
+    embed_requires_https: "Twitch only allows its chat to be embedded on sites served over HTTPS.",
+    embed_requires_domain:
+      "Twitch does not allow its chat to be embedded on sites opened by IP address.",
+    embed_fallback: "You can still open the chat in a separate window.",
+    iframe_title: "Twitch chat",
+  },
+
+  site: {
+    skip_to_content: "Skip to content",
+    language_label: "Language",
   },
 };
 export default locale_en;

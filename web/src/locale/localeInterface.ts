@@ -74,19 +74,41 @@ export interface localeInterface {
   };
 
   player_page: {
+    cinema_mode_enable: string;
+    cinema_mode_disable: string;
+
     modal_add_stream_title: string;
     modal_add_stream_message: string;
     modal_add_stream_placeholder: string;
-
-    cinema_mode_enable: string;
-    cinema_mode_disable: string;
+    modal_add_stream_already_added: string;
   };
   player: {
     message_is_not_online: string;
+    message_offline_hint: string;
     message_loading_video: string;
-    message_error: string;
+    message_reconnecting: string;
+    message_rejected: string;
+    button_retry: string;
 
+    status_live: string;
     stream_status_offline: string;
+
+    button_play: string;
+    button_pause: string;
+    button_mute: string;
+    button_unmute: string;
+    button_tap_to_unmute: string;
+    volume_label: string;
+    button_fullscreen_enter: string;
+    button_fullscreen_exit: string;
+    button_picture_in_picture: string;
+    button_show_chat: string;
+    button_hide_chat: string;
+    button_close_stream: string;
+
+    menu_quality: string;
+    menu_audio_track: string;
+    menu_option_auto: string;
   };
   stream_status: {
     message_current_viewers: string;
@@ -111,6 +133,7 @@ export interface localeInterface {
 
   shared_component_text_input_modal: {
     button_accept: string;
+    button_close: string;
   };
 
   shared_component_card: {
@@ -189,20 +212,48 @@ export interface localeInterface {
 
   chat: {
     title: string;
+    tab_stream_chat: string;
+    tab_twitch: string;
+    stream_picker_label: string;
+    button_close_panel: string;
+    unread_messages: string;
+
     placeholder_input: string;
     button_reaction_title: string;
-    button_change_display_name_title: string;
     button_send_title: string;
-    status_connecting: string;
-    status_connected: string;
-    status_error: string;
-    status_disconnected: string;
+    button_new_messages: string;
     no_messages_yet: string;
-    error_failed_to_connect: string;
+
+    status_connecting: string;
+    status_disconnected: string;
     error_not_connected: string;
     error_failed_to_send: string;
-    modal_display_name_title: string;
-    modal_display_name_message: string;
-    modal_display_name_placeholder: string;
+
+    display_name_prompt: string;
+    display_name_label: string;
+    display_name_placeholder: string;
+    chatting_as: string;
+    button_change_display_name_title: string;
+    button_save_display_name: string;
+    button_cancel: string;
+  };
+
+  twitch: {
+    channel_label: string;
+    channel_placeholder: string;
+    channel_help: string;
+    error_invalid_channel: string;
+    button_open_chat: string;
+    button_change_channel: string;
+    button_open_popout: string;
+    embed_requires_https: string;
+    embed_requires_domain: string;
+    embed_fallback: string;
+    iframe_title: string;
+  };
+
+  site: {
+    skip_to_content: string;
+    language_label: string;
   };
 }

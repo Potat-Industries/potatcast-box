@@ -1,31 +1,22 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import "./index.css";
-import App from "./App";
 import { BrowserRouter } from "react-router";
-import { CinemaModeProvider } from "./providers/CinemaModeProvider";
-import { StatusProvider } from "./providers/StatusProvider";
-import { HeaderProvider } from "./providers/HeaderProvider";
+import App from "./App";
+import "./index.css";
 import { LocaleProvider } from "./providers/LocaleProvider";
+import { StatusProvider } from "./providers/StatusProvider";
 
 const rootElement = document.getElementById("root");
 if (rootElement === null) {
   throw new Error("Missing root element (#root)");
 }
 
-const root = ReactDOM.createRoot(rootElement);
-const path = import.meta.env.PUBLIC_URL;
-
-root.render(
+ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <BrowserRouter basename={path}>
+    <BrowserRouter basename={import.meta.env.PUBLIC_URL}>
       <LocaleProvider>
         <StatusProvider>
-          <CinemaModeProvider>
-            <HeaderProvider>
-              <App />
-            </HeaderProvider>
-          </CinemaModeProvider>
+          <App />
         </StatusProvider>
       </LocaleProvider>
     </BrowserRouter>

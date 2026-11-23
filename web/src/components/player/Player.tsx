@@ -1,506 +1,251 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, MouseEvent } from "react";
-import PlayPauseComponent from "./components/PlayPauseComponent";
-import VideoLayerSelectorComponent from "./components/VideoLayerSelectorComponent";
-import AudioLayerSelectorComponent from "./components/AudioLayerSelectorComponent";
-import CurrentViewersComponent from "./components/CurrentViewersComponent";
-import { StreamStatus } from "../../providers/StatusProvider";
+import { PlayIcon, SpeakerXMarkIcon, XMarkIcon } from "@heroicons/react/20/solid";
 import {
-  CurrentLayersMessage,
-  PeerConnectionDataChannels,
-  PeerConnectionSetup,
-  SetupPeerConnectionProps,
-} from "./functions/peerconnection";
-import { ChatAdapter } from "../../hooks/useChatSession";
-import {
-  ArrowsPointingOutIcon,
-  Square2StackIcon,
-  HeartIcon,
-  XMarkIcon,
-} from "@heroicons/react/20/solid";
-import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
-import VolumeComponent from "./components/VolumeComponent";
-import { StatusMessageComponent } from "./components/StatusMessageComponent";
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+} from "react";
+import { LocaleContext } from "../../providers/LocaleProvider";
+import { ControlButton } from "./controls/ControlButton";
+import { PlayerControls, type ChatToggle, type CinemaModeToggle } from "./controls/PlayerControls";
+import { useAutoHide } from "./controls/useAutoHide";
+import { useFullscreen } from "./controls/useFullscreen";
+import { usePictureInPicture } from "./controls/usePictureInPicture";
+import { usePlayback } from "./controls/usePlayback";
+import { ReactionOverlay } from "./ReactionOverlay";
+import type { StreamSession, StreamSessionSnapshot } from "./session/StreamSession";
+import { useStreamSession } from "./session/useStreamSession";
+import { StatusOverlay, type PlayerStatus } from "./StatusOverlay";
+
+const VOLUME_KEY_STEP = 0.05;
+const DOUBLE_CLICK_WINDOW_MS = 200;
 
 interface PlayerProps {
-  streamKey: string;
-  cinemaMode: boolean;
-  fillContainer?: boolean;
-  isChatOpen?: boolean;
-  onToggleChat?(): void;
-  onChatAdapterChange?(streamKey: string, adapter: ChatAdapter | undefined): void;
-  onReactionSenderChange?(streamKey: string, sender: ReactionSender | undefined): void;
-  onStreamStatusChange?(streamKey: string, status: StreamStatus): void;
-  onCloseStream?(): void;
+  session: StreamSession;
+  /** Secondary tiles start muted so adding a stream never talks over the one already playing. */
+  startMuted?: boolean;
+  chat?: ChatToggle;
+  cinemaMode?: CinemaModeToggle;
+  /** Shows a title bar with a close button; used for tiles in multi-view. */
+  onClose?: () => void;
 }
 
-export type ReactionSender = () => void;
+function getPlayerStatus(
+  snapshot: StreamSessionSnapshot,
+  hasFrame: boolean,
+  needsUserGesture: boolean,
+): PlayerStatus | null {
+  if (snapshot.phase === "rejected" || snapshot.phase === "reconnecting") {
+    return snapshot.phase;
+  }
 
-interface FullscreenElement extends HTMLElement {
-  webkitRequestFullscreen?: () => void | Promise<void>;
-  msRequestFullscreen?: () => void | Promise<void>;
-  webkitEnterFullscreen?: () => void;
+  if (snapshot.streamStatus && !snapshot.streamStatus.isOnline) {
+    return "offline";
+  }
+
+  // Some browsers load nothing until playback starts, so "waiting for a tap" must not look like loading.
+  return hasFrame || needsUserGesture ? null : "loading";
 }
 
-const Player = (props: PlayerProps) => {
-  const {
-    cinemaMode,
-    fillContainer = false,
-    isChatOpen,
-    onToggleChat,
-    onChatAdapterChange,
-    onReactionSenderChange,
-    onStreamStatusChange,
-    onCloseStream,
-  } = props;
-  const streamKey = decodeURIComponent(props.streamKey).replace(/ /g, "_");
-
-  const [currentStreamStatus, setCurrentStreamStatus] = useState<StreamStatus>({
-    streamKey: streamKey,
-    motd: "",
-    viewers: 0,
-    isOnline: false,
-  });
-
-  const [currentLayersStatus, setCurrentLayersStatus] = useState<
-    CurrentLayersMessage | undefined
-  >();
-  const [audioLayers, setAudioLayers] = useState<string[]>([]);
-  const [videoLayers, setVideoLayers] = useState<string[]>([]);
-  const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
-  const [layerEndpoint, setLayerEndpoint] = useState<string>("");
-  const [streamState, setStreamState] = useState<"Loading" | "Playing" | "Offline" | "Error">(
-    "Loading",
+function isTypingTarget(target: EventTarget): boolean {
+  return (
+    target instanceof HTMLElement && target.matches("input:not([type='range']), textarea, select")
   );
-  const [videoOverlayVisible, setVideoOverlayVisible] = useState<boolean>(false);
-  const [isVideoMuted, setIsVideoMuted] = useState<boolean>(true);
-  const [videoVolume, setVideoVolume] = useState<number>(50);
-  const [reactionAnimations, setReactionAnimations] = useState<{ id: number; x: number }[]>([]);
-  const [dataChannels, setDataChannels] = useState<PeerConnectionDataChannels | undefined>();
+}
 
-  const clickDelay = 250;
+/** Elements that already give Space and the arrow keys a meaning of their own. */
+function handlesSpaceAndArrows(target: EventTarget): boolean {
+  return (
+    target instanceof HTMLElement &&
+    target.matches("button, a, [role='menuitemradio'], input[type='range']")
+  );
+}
+
+export default function Player({
+  session,
+  startMuted = false,
+  chat,
+  cinemaMode,
+  onClose,
+}: PlayerProps) {
+  const { locale } = useContext(LocaleContext);
+  const snapshot = useStreamSession(session);
+
+  const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const layerEndpointRef = useRef<string>("");
-  const videoOverlayVisibleTimeoutRef = useRef<number | undefined>(undefined);
-  const reactionAnimationIdRef = useRef(0);
-  const lastClickTimeRef = useRef(0);
-  const clickTimeoutRef = useRef<number | undefined>(undefined);
-  const streamVideoPlayerId = streamKey + "_videoPlayer";
-  const setVideoRef = useCallback((element: HTMLVideoElement | null) => {
-    videoRef.current = element;
-    setVideoElement(element);
-  }, []);
-  const isPictureInPictureSupported =
-    videoElement !== null &&
-    document.pictureInPictureEnabled &&
-    typeof videoElement.requestPictureInPicture === "function";
+  const lastPointerTypeRef = useRef("mouse");
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isHoveringControls, setIsHoveringControls] = useState(false);
 
-  const peerConnectionConfig = useMemo<SetupPeerConnectionProps>(
-    () => ({
-      streamKey: streamKey,
-      videoRef: videoRef,
-      layerEndpointRef: layerEndpointRef,
-      onStateChange: (state) => console.log("PeerConnection.onStateChange", state),
-      onStreamRestart: () => console.log("PeerConnection.onStreamRestart: Missing setup"),
-      onAudioLayerChange: (layers) => setAudioLayers(layers),
-      onVideoLayerChange: (layers) => setVideoLayers(layers),
-      onLayerEndpointChange: (endpoint) => setLayerEndpoint(endpoint),
-      onLayerStatus: (status) => setCurrentLayersStatus(status),
-      onStreamStatus: (status) => {
-        setCurrentStreamStatus(status);
-        onStreamStatusChange?.(streamKey, status);
+  const playback = usePlayback({
+    videoRef,
+    mediaStream: snapshot.mediaStream,
+    startMuted,
+    persistAudioChoices: !startMuted,
+  });
+  const { isFullscreen, toggleFullscreen } = useFullscreen(containerRef, videoRef);
+  const { isPictureInPictureSupported, togglePictureInPicture } = usePictureInPicture(videoRef);
+  const { isRevealed, reveal, hide } = useAutoHide();
 
-        if (!status.isOnline) {
-          setStreamState("Offline");
-          return;
-        }
+  useEffect(() => () => clearTimeout(clickTimerRef.current), []);
 
-        const videoElement = videoRef.current;
-        if (
-          videoElement !== null &&
-          !videoElement.paused &&
-          videoElement.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
-        ) {
-          setStreamState("Playing");
-          return;
-        }
+  const status = getPlayerStatus(snapshot, playback.hasFrame, playback.needsUserGesture);
+  const areControlsVisible = isRevealed || isMenuOpen || isHoveringControls || !playback.isPlaying;
 
-        setStreamState("Loading");
-      },
-      onError: () => setStreamState("Error"),
-      onDataChannelsChange: (channels, active) => {
-        setDataChannels((current) =>
-          active ? channels : current === channels ? undefined : current,
-        );
-      },
-    }),
-    [onStreamStatusChange, streamKey],
-  );
+  const handleSurfaceClick = () => {
+    // A tap on a touchscreen only shows or hides the controls; pausing needs a deliberate press
+    // on the play button, otherwise every attempt to reach the controls would pause the stream.
+    if (lastPointerTypeRef.current === "mouse") {
+      // Held back briefly so a double-click can go fullscreen without a pause-and-resume flicker.
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = setTimeout(playback.togglePlay, DOUBLE_CLICK_WINDOW_MS);
+      reveal();
+    } else if (areControlsVisible && playback.isPlaying) {
+      hide();
+    } else {
+      reveal();
+    }
+  };
 
-  const addReactionAnimation = useCallback(() => {
-    const id = reactionAnimationIdRef.current + 1;
-    reactionAnimationIdRef.current = id;
-    const x = Math.round((Math.random() - 0.5) * 32);
+  const handleSurfaceDoubleClick = () => {
+    if (lastPointerTypeRef.current === "mouse") {
+      clearTimeout(clickTimerRef.current);
+      toggleFullscreen();
+    }
+  };
 
-    setReactionAnimations((current) => [...current.slice(-7), { id, x }]);
-  }, []);
+  const handlePointerMove = (event: PointerEvent) => {
+    if (event.pointerType === "mouse") {
+      reveal();
+    }
+  };
 
-  const handleEnterFullscreen = () => {
-    const videoElement = videoRef.current as FullscreenElement | null;
-    if (!videoElement) {
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.altKey || event.ctrlKey || event.metaKey || isTypingTarget(event.target)) {
       return;
     }
 
-    try {
-      if (videoElement.requestFullscreen) {
-        void videoElement.requestFullscreen().catch((err) => {
-          console.error("VideoPlayer_RequestFullscreen", err);
-        });
-      } else if (videoElement.webkitRequestFullscreen) {
-        void videoElement.webkitRequestFullscreen();
-      } else if (videoElement.msRequestFullscreen) {
-        void videoElement.msRequestFullscreen();
-      } else if (videoElement.webkitEnterFullscreen) {
-        videoElement.webkitEnterFullscreen();
-      }
-    } catch (err) {
-      console.error("VideoPlayer_RequestFullscreen", err);
-    }
-  };
+    const shortcuts: Record<string, (() => void) | undefined> = {
+      k: playback.togglePlay,
+      m: playback.toggleMute,
+      f: toggleFullscreen,
+      c: chat?.onToggle,
+    };
 
-  const resetTimer = useCallback((isVisible: boolean) => {
-    setVideoOverlayVisible(isVisible);
-
-    if (videoOverlayVisibleTimeoutRef) {
-      clearTimeout(videoOverlayVisibleTimeoutRef.current);
+    if (!handlesSpaceAndArrows(event.target)) {
+      shortcuts[" "] = playback.togglePlay;
+      shortcuts.ArrowUp = () => playback.nudgeVolume(VOLUME_KEY_STEP);
+      shortcuts.ArrowDown = () => playback.nudgeVolume(-VOLUME_KEY_STEP);
     }
 
-    videoOverlayVisibleTimeoutRef.current = setTimeout(() => {
-      setVideoOverlayVisible(false);
-    }, 2500);
-  }, []);
+    const shortcut = shortcuts[event.key.length === 1 ? event.key.toLowerCase() : event.key];
+    if (!shortcut) {
+      return;
+    }
 
-  const handleVideoPlayerClick = () => {
-    lastClickTimeRef.current = Date.now();
-
-    clickTimeoutRef.current = setTimeout(() => {
-      const timeSinceLastClick = Date.now() - lastClickTimeRef.current;
-      if (timeSinceLastClick >= clickDelay && timeSinceLastClick - clickDelay < 5000) {
-        if (videoRef.current?.paused) {
-          void videoRef.current.play();
-        } else {
-          videoRef.current?.pause();
-        }
-      }
-    }, clickDelay);
-  };
-
-  const handleVideoPlayerDoubleClick = () => {
-    clearTimeout(clickTimeoutRef.current);
-    lastClickTimeRef.current = 0;
-    handleEnterFullscreen();
-  };
-
-  const stopOverlayClickPropagation = (event: MouseEvent<HTMLElement>) => {
     event.preventDefault();
-    event.stopPropagation();
+    shortcut();
+    reveal();
   };
-
-  useEffect(() => {
-    const player = document.getElementById(streamVideoPlayerId);
-    const handleMouseUp = () => resetTimer(true);
-    const handleMouseMove = () => resetTimer(true);
-    const handleMouseEnter = () => resetTimer(true);
-    const handleMouseLeave = () => resetTimer(false);
-    player?.addEventListener("mouseup", handleMouseUp);
-    player?.addEventListener("mousemove", handleMouseMove);
-    player?.addEventListener("mouseenter", handleMouseEnter);
-    player?.addEventListener("mouseleave", handleMouseLeave);
-
-    let currentPeerConnection: RTCPeerConnection | null = null;
-    let disposed = false;
-    const beforeUnloadHandler = () => currentPeerConnection?.close();
-    window.addEventListener("beforeunload", beforeUnloadHandler);
-
-    const setupPeerConnection = () => {
-      const setupProps: SetupPeerConnectionProps = {
-        ...peerConnectionConfig,
-        onStreamRestart: setupPeerConnection,
-      };
-
-      PeerConnectionSetup(setupProps)
-        .then((peerConnection) => {
-          if (disposed) {
-            peerConnection.close();
-            return;
-          }
-          currentPeerConnection = peerConnection;
-        })
-        .catch((err) => console.log("PeerConnectionConfig.Error", err));
-    };
-
-    setupPeerConnection();
-
-    return () => {
-      disposed = true;
-      player?.removeEventListener("mouseup", handleMouseUp);
-      player?.removeEventListener("mouseenter", handleMouseEnter);
-      player?.removeEventListener("mouseleave", handleMouseLeave);
-      player?.removeEventListener("mousemove", handleMouseMove);
-
-      window.removeEventListener("beforeunload", beforeUnloadHandler);
-      currentPeerConnection?.close();
-      clearTimeout(videoOverlayVisibleTimeoutRef.current);
-    };
-  }, [peerConnectionConfig, resetTimer, streamVideoPlayerId]);
-
-  useEffect(() => {
-    const adapter = dataChannels?.chatAdapter;
-    if (!adapter) {
-      return;
-    }
-
-    onChatAdapterChange?.(streamKey, adapter);
-
-    return () => {
-      onChatAdapterChange?.(streamKey, undefined);
-    };
-  }, [dataChannels, onChatAdapterChange, streamKey]);
-
-  useEffect(() => {
-    const channel = dataChannels?.reactionDataChannel;
-    if (!channel) {
-      return;
-    }
-
-    const sendReaction = () => {
-      if (channel.readyState !== "open") {
-        return;
-      }
-
-      try {
-        channel.send(JSON.stringify({ type: "reaction" }));
-        addReactionAnimation();
-      } catch (error) {
-        console.log("ReactionDataChannel.Send.Error", error);
-      }
-    };
-    const updateSender = () => {
-      onReactionSenderChange?.(streamKey, channel.readyState === "open" ? sendReaction : undefined);
-    };
-    const handleMessage = (event: MessageEvent) => {
-      if (typeof event.data !== "string") {
-        return;
-      }
-
-      try {
-        const payload = JSON.parse(event.data) as { type?: string };
-        if (payload.type === "reaction") {
-          addReactionAnimation();
-        }
-      } catch {
-        return;
-      }
-    };
-
-    channel.addEventListener("open", updateSender);
-    channel.addEventListener("close", updateSender);
-    channel.addEventListener("error", updateSender);
-    channel.addEventListener("message", handleMessage);
-    updateSender();
-
-    return () => {
-      channel.removeEventListener("open", updateSender);
-      channel.removeEventListener("close", updateSender);
-      channel.removeEventListener("error", updateSender);
-      channel.removeEventListener("message", handleMessage);
-      onReactionSenderChange?.(streamKey, undefined);
-    };
-  }, [addReactionAnimation, dataChannels, onReactionSenderChange, streamKey]);
 
   return (
-    <div className={`w-full flex items-end ${fillContainer ? "h-full" : ""}`}>
+    <div
+      ref={containerRef}
+      tabIndex={0}
+      role="region"
+      aria-label={session.streamKey}
+      onKeyDown={handleKeyDown}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={(event) => event.pointerType === "mouse" && hide()}
+      className="@container relative h-full w-full overflow-hidden bg-black text-white select-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-400"
+    >
+      <video
+        ref={videoRef}
+        playsInline
+        className="h-full w-full object-contain"
+        {...playback.videoEventHandlers}
+      />
+
       <div
-        key={`${streamVideoPlayerId}`}
-        id={streamVideoPlayerId}
-        className={`inline-block w-full relative z-0 rounded-md ${fillContainer ? "h-full" : "aspect-video"}`}
-        style={
-          cinemaMode
-            ? {
-                maxHeight: "100vh",
-                maxWidth: "100vw",
-              }
-            : {}
-        }
-      >
-        <div className="absolute flex rounded-md w-full h-full">
-          <div
-            onClick={handleVideoPlayerClick}
-            onDoubleClick={handleVideoPlayerDoubleClick}
-            className={`
-					absolute
-					rounded-md
-					w-full
-					h-full
-					z-20
-					${streamState !== "Playing" && "bg-gray-950"}
-					${
-            streamState === "Playing" &&
-            `
-						transition-opacity
-						duration-500
-						hover: ${videoOverlayVisible ? "opacity-100" : "opacity-0"}
-						${!videoOverlayVisible ? "cursor-none" : "cursor-default"}
-					`
-          }
-				`}
-          >
-            {/*Buttons */}
-            {videoElement !== null && (
-              <div className="absolute bottom-0 h-8 w-full flex place-items-end z-30">
-                <div
-                  onClick={stopOverlayClickPropagation}
-                  onDoubleClick={stopOverlayClickPropagation}
-                  className="player-drag-handle bg-blue-950 w-full flex flex-row gap-2 h-1/14 p-1 max-h-8 min-h-8 rounded-md cursor-move"
-                >
-                  <span className="player-drag-cancel flex h-full items-center cursor-pointer">
-                    <PlayPauseComponent videoRef={videoRef} />
-                  </span>
+        aria-hidden="true"
+        className={`absolute inset-0 ${areControlsVisible ? "" : "cursor-none"}`}
+        onPointerUp={(event) => {
+          lastPointerTypeRef.current = event.pointerType;
+        }}
+        onClick={handleSurfaceClick}
+        onDoubleClick={handleSurfaceDoubleClick}
+      />
 
-                  <span className="player-drag-cancel flex h-full items-center cursor-pointer">
-                    <VolumeComponent
-                      isMuted={isVideoMuted}
-                      volume={videoVolume}
-                      onVolumeChanged={(newValue) => {
-                        if (videoRef.current) {
-                          videoRef.current.volume = newValue / 100;
-                        }
-                      }}
-                      onStateChanged={(newState) => {
-                        if (videoRef.current) {
-                          videoRef.current.muted = newState;
-                        }
-                      }}
-                    />
-                  </span>
+      <ReactionOverlay session={session} />
 
-                  <div className="w-full pointer-events-none"></div>
+      {status && (
+        <StatusOverlay status={status} streamKey={session.streamKey} onRetry={session.retryNow} />
+      )}
 
-                  <span className="player-drag-cancel flex h-full items-center cursor-default">
-                    <CurrentViewersComponent
-                      currentViewersCount={currentStreamStatus?.viewers ?? 0}
-                    />
-                  </span>
-                  <span className="player-drag-cancel flex h-full items-center cursor-pointer">
-                    <VideoLayerSelectorComponent
-                      layers={videoLayers}
-                      layerEndpoint={layerEndpoint}
-                      hasPacketLoss={false}
-                      currentLayer={currentLayersStatus?.videoLayerCurrent ?? ""}
-                    />
-                  </span>
+      {!status && playback.needsUserGesture && (
+        <button
+          type="button"
+          aria-label={locale.player.button_play}
+          onClick={playback.togglePlay}
+          className="player-drag-cancel absolute inset-0 z-10 flex items-center justify-center bg-black/40"
+        >
+          <span className="flex size-16 items-center justify-center rounded-full bg-white/90 text-black">
+            <PlayIcon className="size-8" />
+          </span>
+        </button>
+      )}
 
-                  {audioLayers.length > 1 && (
-                    <span className="player-drag-cancel flex h-full items-center cursor-pointer">
-                      <AudioLayerSelectorComponent
-                        layers={audioLayers}
-                        layerEndpoint={layerEndpoint}
-                        hasPacketLoss={false}
-                        currentLayer={currentLayersStatus?.videoLayerCurrent ?? ""}
-                      />
-                    </span>
-                  )}
+      {!status && !playback.needsUserGesture && playback.isAutoplayMuted && (
+        <button
+          type="button"
+          onClick={playback.unmute}
+          className="player-drag-cancel absolute top-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold whitespace-nowrap text-black shadow-lg"
+        >
+          <SpeakerXMarkIcon className="size-5" />
+          {locale.player.button_tap_to_unmute}
+        </button>
+      )}
 
-                  {isPictureInPictureSupported && (
-                    <Square2StackIcon
-                      className="player-drag-cancel cursor-pointer"
-                      onClick={() => videoElement.requestPictureInPicture()}
-                    />
-                  )}
-                  <ArrowsPointingOutIcon
-                    className="player-drag-cancel cursor-pointer"
-                    onClick={handleEnterFullscreen}
-                  />
-                </div>
-              </div>
+      {onClose && (
+        <div
+          className={`player-drag-handle absolute inset-x-0 top-0 z-20 flex cursor-move items-center gap-2 bg-gradient-to-b from-black/85 to-transparent pr-1 pb-6 pl-3 transition-opacity duration-200 has-[:focus-visible]:opacity-100 ${
+            areControlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+        >
+          <span className="min-w-0 flex-1 truncate text-sm">
+            <span className="font-semibold">{session.streamKey}</span>
+            {snapshot.streamStatus?.isOnline && snapshot.streamStatus.motd && (
+              <span className="ml-2 text-gray-300">{snapshot.streamStatus.motd}</span>
             )}
-
-            {/* Status messages */}
-            <StatusMessageComponent streamKey={streamKey} state={streamState} />
-
-            <div
-              onDoubleClick={stopOverlayClickPropagation}
-              className="absolute top-2 right-2 flex flex-row gap-2 pointer-events-auto z-60"
-            >
-              {!!onToggleChat && (
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onToggleChat();
-                  }}
-                  className={`p-2 rounded-full border ${isChatOpen ? "bg-blue-600 border-blue-500 text-white" : "bg-black/60 border-gray-700 text-gray-200 hover:bg-gray-800"}`}
-                >
-                  <ChatBubbleLeftRightIcon className="h-5 w-5" />
-                </button>
-              )}
-
-              {!!onCloseStream && (
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onCloseStream();
-                  }}
-                  className="p-2 rounded-full bg-red-400 hover:bg-red-500"
-                >
-                  <XMarkIcon className="h-6 w-6 text-black" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          <video
-            key={`${streamVideoPlayerId}_video`}
-            ref={setVideoRef}
-            autoPlay
-            muted={isVideoMuted}
-            playsInline
-            className="rounded-md w-full h-full relative bg-gray-950"
-            onPlaying={() => setStreamState("Playing")}
-            onLoadStart={() => setStreamState("Loading")}
-            onVolumeChange={(event) => {
-              setIsVideoMuted(event.currentTarget.muted);
-              setVideoVolume(Math.round(event.currentTarget.volume * 100));
-            }}
-            onLoadedData={(event) => {
-              console.log("VideoPlayer.onLoadedMetadata", event);
-              event.currentTarget.volume = videoVolume / 100;
-              event.currentTarget.play();
-            }}
-            onError={(error) => console.log("VideoPlayer.Error", error)}
-            onErrorCapture={(error) => console.log("VideoPlayer.ErrorCapture", error)}
-            onEnded={() => setStreamState("Offline")}
-          />
-
-          <div className="pointer-events-none absolute right-5 bottom-10 z-70 h-20 w-14 overflow-visible">
-            {reactionAnimations.map((reaction) => (
-              <HeartIcon
-                key={reaction.id}
-                className="animate-reaction-float absolute right-0 bottom-0 h-7 w-7 text-rose-500 drop-shadow"
-                style={{ "--reaction-x": `${reaction.x}px` } as CSSProperties}
-                onAnimationEnd={() =>
-                  setReactionAnimations((current) =>
-                    current.filter((item) => item.id !== reaction.id),
-                  )
-                }
-              />
-            ))}
-          </div>
+          </span>
+          <ControlButton label={locale.player.button_close_stream} onClick={onClose}>
+            <XMarkIcon className="size-5" />
+          </ControlButton>
         </div>
-      </div>
+      )}
+
+      <PlayerControls
+        isVisible={areControlsVisible}
+        snapshot={snapshot}
+        isPlaying={playback.isPlaying}
+        volume={playback.volume}
+        isMuted={playback.isMuted}
+        canSetVolume={playback.canSetVolume}
+        isFullscreen={isFullscreen}
+        chat={chat}
+        cinemaMode={cinemaMode}
+        onTogglePlay={playback.togglePlay}
+        onToggleMute={playback.toggleMute}
+        onVolumeChange={playback.setVolume}
+        onSelectLayer={(kind, layer) => void session.selectLayer(kind, layer)}
+        onMenuOpenChange={setIsMenuOpen}
+        onHoverChange={setIsHoveringControls}
+        onTogglePictureInPicture={isPictureInPictureSupported ? togglePictureInPicture : undefined}
+        onToggleFullscreen={toggleFullscreen}
+      />
     </div>
   );
-};
-
-export default Player;
+}

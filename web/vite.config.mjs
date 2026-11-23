@@ -10,7 +10,7 @@ const environmentFile = ["../.env.development", "../.env.production"]
   .find((filePath) => fs.existsSync(filePath));
 
 if (environmentFile) {
-  dotenv.config({ path: [environmentFile, "../.env"] });
+  dotenv.config({ path: [environmentFile, "../.env"], quiet: true });
 }
 
 const backendTarget = resolveBackendTarget();

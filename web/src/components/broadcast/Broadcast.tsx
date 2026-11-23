@@ -6,7 +6,7 @@ import { parseLinkHeader } from "@web3-storage/parse-link-header";
 import Button from "../shared/Button";
 import { ErrorMessageEnum, getMediaErrorMessage } from "./errorMessage";
 import ProfileSettings from "./ProfileSettings";
-import Player from "../player/Player";
+import { StandalonePlayer } from "../player/StandalonePlayer";
 import { LocaleContext } from "../../providers/LocaleProvider";
 import toBase64Utf8 from "../../utilities/base64";
 
@@ -321,7 +321,9 @@ function BrowserBroadcaster() {
 
       {/* Browser video feed */}
       {profileStateIsActive ? (
-        <Player streamKey={profileStreamKey} cinemaMode={false} />
+        // Muted because this is the broadcaster watching their own stream: with sound it would echo
+        // their voice back late and feed into the microphone.
+        <StandalonePlayer key={profileStreamKey} streamKey={profileStreamKey} startMuted />
       ) : (
         <video
           ref={videoRef}

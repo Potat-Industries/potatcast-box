@@ -1,6 +1,11 @@
 @import "tailwindcss";
 
 @layer base {
+  html {
+    /* The site is dark-only; this makes native controls, scrollbars and form fields match. */
+    color-scheme: dark;
+  }
+
   body {
     margin: 0;
     font-family:
