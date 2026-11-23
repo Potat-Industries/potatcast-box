@@ -30,6 +30,10 @@ To create a production build, use npm run build.
 webpack compiled successfully
 ```
 
+Before opening a pull request, run `npm run check` in the `web` directory. It runs the same steps as CI: formatting
+(Prettier), linting, type checking, unit tests and a production build. `npm run format` fixes formatting and
+`npm run lint:fix` applies automatic lint fixes.
+
 ### Backend
 
 Go dependencies are automatically installed.
@@ -43,3 +47,5 @@ like the following.
 ```
 
 To use Broadcast Box navigate to: `http://localhost:3000`. In your broadcast tool of choice, you will broadcast to `http://localhost:8080/api/whip`.
+
+Run `go test -race ./...` and `golangci-lint run` before opening a pull request; both run in CI.

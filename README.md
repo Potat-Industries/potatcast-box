@@ -126,8 +126,24 @@ Use of example scripts:
 
 If you are broadcasting to the Stream Key `StreamTest` your video will be available at <https://b.siobud.com/StreamTest>.
 
-The player page also supports multi-view playback. Use the `Add Stream` button in the footer to add more active streams
-to the same page, and use `?cinemaMode=true` to open the player in a chrome-free layout.
+The player reconnects on its own after a network drop or a server restart, and starts playing as soon as an offline
+stream goes live. Browsers only allow sound without a click once the viewer has interacted with the site, so a stream
+opened from a direct link starts muted with a "Tap to unmute" prompt.
+
+Keyboard shortcuts work while the player has focus: `Space` or `K` to play/pause, `M` to mute, `F` for fullscreen,
+`C` to show or hide chat, and the up/down arrows for volume.
+
+The panel next to the player has two tabs:
+
+- **Stream chat** is the built-in chat for the stream.
+- **Twitch** shows the chat of any Twitch channel. Each viewer enters the channel name (or a twitch.tv link) once and it
+  is remembered in their browser for that stream. Add `?twitch=<channel>` to a link to open it directly. Twitch only
+  allows its chat to be embedded on sites served over HTTPS from a domain name (`localhost` is the exception); on other
+  setups the tab offers a link that opens the chat in its own window instead.
+
+The player page also supports multi-view playback. Use the `Add stream` button below the player to add more active
+streams to the same page; on a desktop the tiles can be dragged and resized. Cinema mode (the button in the player
+controls, or `?cinemaMode=true`) hides everything except the player and the panel.
 
 You can also go to the home page and enter `StreamTest`. The following is a screenshot of OBS broadcasting and
 the latency of 120 milliseconds observed.
@@ -259,6 +275,7 @@ For example in nginx you would use the following configuration
 The frontend can be configured by passing these URL Parameters.
 
 - `cinemaMode=true` - Forces the player into cinema mode by adding to end of URL like https://b.siobud.com/myStream?cinemaMode=true
+- `twitch=<channel>` - Opens the Twitch tab of the chat panel with that channel, like https://b.siobud.com/myStream?twitch=someChannel
 
 ## Environment Variables
 
@@ -295,7 +312,7 @@ The frontend can be configured by passing these URL Parameters.
 | ---------------------- | ----------------------------------------------------------------------------------------- |
 | `DISABLE_FRONTEND`     | Disables frontend asset serving and UI routes (`/`, `/publish`, `/statistics`, `/admin`). |
 | `FRONTEND_PATH`        | Path to built frontend assets. Defaults to `./web/build`.                                 |
-| `FRONTEND_ADMIN_TOKEN` | Enables `/admin` and defines the bearer token required to log in.                         |
+| `FRONTEND_ADMIN_TOKEN` | Enables `/admin` and defines the bearer token required to log in. Case-sensitive.         |
 
 ### WebRTC & Networking
 
