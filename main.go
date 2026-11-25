@@ -2,6 +2,8 @@ package main
 
 import (
 	"log/slog"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"runtime"
 	"strings"
@@ -12,9 +14,6 @@ import (
 	"github.com/glimesh/broadcast-box/internal/networktest"
 	"github.com/glimesh/broadcast-box/internal/server"
 	"github.com/glimesh/broadcast-box/internal/webrtc"
-
-	"net/http"
-	_ "net/http/pprof"
 )
 
 func main() {

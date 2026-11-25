@@ -9,9 +9,7 @@ import (
 	"github.com/glimesh/broadcast-box/internal/environment"
 )
 
-var (
-	defaultHTTPSAddress string = ":443"
-)
+const defaultHTTPSAddress = ":443"
 
 func startHTTPSServer(serverMux http.HandlerFunc) {
 	sslKey := os.Getenv(environment.SSLKey)
@@ -27,8 +25,9 @@ func startHTTPSServer(serverMux http.HandlerFunc) {
 	}
 
 	server := &http.Server{
-		Handler: serverMux,
-		Addr:    getHTTPSAddress(),
+		Handler:           serverMux,
+		Addr:              getHTTPSAddress(),
+		ReadHeaderTimeout: readHeaderTimeout,
 	}
 
 	cert, err := tls.LoadX509KeyPair(sslCert, sslKey)

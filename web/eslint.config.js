@@ -5,25 +5,27 @@ import reactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
 
 export default [
+  { ignores: ["build/**"] },
+  { settings: { react: { version: "detect" } } },
   js.configs.recommended,
   ...tseslint.configs["flat/recommended"],
   react.configs.flat.recommended,
   react.configs.flat["jsx-runtime"],
   reactHooks.configs.flat["recommended-latest"],
   {
-    files: ["**/*.ts", "**/*.tsx"],
+    files: ["src/**/*.{ts,tsx}"],
     languageOptions: {
       parserOptions: {
         ecmaVersion: "latest",
         ecmaFeatures: { jsx: true },
       },
-      globals: {
-        ...globals.browser,
-        ...globals.node,
-      },
+      globals: globals.browser,
     },
-    settings: {
-      react: { version: "detect" },
+  },
+  {
+    files: ["*.{js,mjs}"],
+    languageOptions: {
+      globals: globals.node,
     },
   },
 ];

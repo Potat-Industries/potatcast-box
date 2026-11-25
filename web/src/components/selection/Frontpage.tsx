@@ -1,87 +1,90 @@
-import { useContext, useState } from 'react';
-import { useNavigate } from 'react-router'
+import { useContext, useId, useState, type FormEvent } from "react";
+import { useNavigate } from "react-router";
+import { LocaleContext } from "../../providers/LocaleProvider";
+import Toggle from "../shared/Toggle";
 import AvailableStreams from "./AvailableStreams";
-import { HeaderContext } from '../../providers/HeaderProvider';
-import { LocaleContext } from '../../providers/LocaleProvider';
-import Button from '../shared/Button';
-import Toggle from '../shared/Toggle';
-import Input from '../shared/Input';
 
-const Frontpage = () => {
-	const { locale } = useContext(LocaleContext)
-	const { setTitle } = useContext(HeaderContext)
-	const [isDisabledSubmit, setIsDisabledSubmit] = useState(true)
-	const [streamType, setStreamType] = useState<'Watch' | 'Share'>('Watch');
-	const [streamKey, setStreamKey] = useState("")
-	const navigate = useNavigate()
-	setTitle("")
+type Intent = "watch" | "share";
 
-	const onSubmit = () => {
-		if (!streamKey || streamKey === '') {
-			return;
-		}
+export default function Frontpage() {
+  const { locale } = useContext(LocaleContext);
+  const navigate = useNavigate();
+  const [intent, setIntent] = useState<Intent>("watch");
+  const [streamKey, setStreamKey] = useState("");
+  const inputId = useId();
+  const trimmedStreamKey = streamKey.trim();
 
-		if (streamType === "Share") {
-			navigate(`/publish/${streamKey}`)
-		}
+  const watchStream = (key: string) => navigate(`/${encodeURIComponent(key)}`);
 
-		if (streamType === "Watch") {
-			navigate(`/${streamKey}`)
-		}
-	}
-	const onKeyUp = () => setIsDisabledSubmit(() => streamKey === '')
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    if (!trimmedStreamKey) {
+      return;
+    }
 
-	return (
-		<div className='flex mx-auto max-w-2xl pt-18 gap-2'>
+    if (intent === "share") {
+      navigate(`/publish/${encodeURIComponent(trimmedStreamKey)}`);
+    } else {
+      watchStream(trimmedStreamKey);
+    }
+  };
 
-			<div className='flex flex-col rounded-md bg-gray-800 shadow-md p-8 gap-2'>
-				<h2 className="font-light leading-tight text-4xl mt-0 mb-2">{locale.frontpage.welcome}</h2>
-				<p>{locale.frontpage.welcome_subtitle}</p>
+  return (
+    <div className="mx-auto w-full max-w-2xl px-3 py-6 sm:py-12">
+      <div className="flex flex-col gap-6 rounded-lg bg-gray-800 p-5 shadow-md sm:p-8">
+        <div>
+          <h1 className="mb-2 text-3xl leading-tight font-light sm:text-4xl">
+            {locale.frontpage.welcome}
+          </h1>
+          <p className="text-gray-200">{locale.frontpage.welcome_subtitle}</p>
+        </div>
 
-				<div className='mt-4' />
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <Toggle
+            titleLeft={locale.frontpage.toggle_watch}
+            onClickLeft={() => setIntent("watch")}
+            iconLeft="People"
+            titleRight={locale.frontpage.toggle_stream}
+            onClickRight={() => setIntent("share")}
+            iconRight="Camera"
+            selected={intent === "watch" ? "Left" : "Right"}
+          />
 
-				<Toggle
-					titleLeft={locale.frontpage.toggle_watch}
-					onClickLeft={() => setStreamType("Watch")}
-					iconLeft='People'
+          <div className="flex flex-col gap-1">
+            <label htmlFor={inputId} className="text-sm font-bold">
+              {locale.frontpage.stream_input_label}
+            </label>
+            <input
+              id={inputId}
+              type="text"
+              value={streamKey}
+              autoFocus
+              autoCapitalize="none"
+              autoComplete="off"
+              spellCheck={false}
+              placeholder={
+                intent === "share"
+                  ? locale.frontpage.stream_input_placeholder_share
+                  : locale.frontpage.stream_input_placeholder_join
+              }
+              onChange={(event) => setStreamKey(event.target.value)}
+              className="h-11 w-full rounded-md border border-gray-600 bg-gray-700 px-3 text-base text-white placeholder:text-gray-300 focus-visible:outline-2 focus-visible:outline-blue-400"
+            />
+          </div>
 
-					titleRight={locale.frontpage.toggle_stream}
-					onClickRight={() => setStreamType("Share")}
-					iconRight='Camera'
+          <button
+            type="submit"
+            disabled={!trimmedStreamKey}
+            className="h-11 w-full rounded-md bg-blue-700 px-4 font-bold text-white hover:bg-blue-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 disabled:cursor-not-allowed disabled:bg-gray-600 disabled:text-gray-300"
+          >
+            {intent === "share"
+              ? locale.frontpage.stream_button_stream_start
+              : locale.frontpage.stream_button_stream_join}
+          </button>
+        </form>
 
-					selected={streamType === "Watch" ? "Left" : "Right"}
-
-				/>
-
-				<div className='flex flex-col justify-center'>
-					<Input
-						label="Stream key"
-						value={streamKey}
-						setValue={setStreamKey}
-						hasAutofocus={true}
-						placeholder={streamType === "Share" ?
-							locale.frontpage.stream_input_placeholder_share :
-							locale.frontpage.stream_input_placeholder_join}
-						onKeyUp={onKeyUp}
-						onEnterKeyUp={onSubmit}
-					/>
-
-					<Button
-						title={streamType === "Share" ?
-							locale.frontpage.stream_button_stream_start :
-							locale.frontpage.stream_button_stream_join
-						}
-						center
-						isDisabled={isDisabledSubmit}
-						onClick={onSubmit}
-						stretch
-					/>
-				</div>
-
-				<AvailableStreams />
-			</div>
-		</div>
-	)
+        <AvailableStreams onSelect={watchStream} />
+      </div>
+    </div>
+  );
 }
-
-export default Frontpage

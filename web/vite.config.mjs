@@ -1,102 +1,91 @@
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
 
-const environmentFiles = ["../.env.development", "../.env.production"];
+const environmentFile = ["../.env.development", "../.env.production"]
+  .map((fileName) => path.resolve(import.meta.dirname, fileName))
+  .find((filePath) => fs.existsSync(filePath));
 
-for (const fileName in environmentFiles) {
-	const filePath = path.resolve(import.meta.dirname, environmentFiles[fileName]);
-	if (fs.existsSync(filePath)) {
-		dotenv.config({
-			path: [filePath, "../.env"],
-		});
-		break;
-	}
+if (environmentFile) {
+  dotenv.config({ path: [environmentFile, "../.env"], quiet: true });
 }
 
-let targetHostAddress = process.env.HTTP_ADDRESS || "localhost:8080";
-let targetProtocol = "http://";
+const backendTarget = resolveBackendTarget();
+console.log(`Target Backend: ${backendTarget}`);
 
-if (targetHostAddress[0] === ":") {
-	targetHostAddress = "localhost" + targetHostAddress;
+function resolveBackendTarget() {
+  let hostAddress = process.env.HTTP_ADDRESS || "localhost:8080";
+  if (hostAddress.startsWith(":")) {
+    hostAddress = "localhost" + hostAddress;
+  }
+
+  if (process.env.USE_SSL !== "TRUE") {
+    return `http://${hostAddress}`;
+  }
+
+  const [host] = hostAddress.split(":");
+  return `https://${host}:443`;
 }
-
-
-if (process.env.USE_SSL == "TRUE") {
-	const httpsPort = "443";
-	targetProtocol = "https://";
-
-	const currentTarget = targetHostAddress.split(":");
-	if (currentTarget.length === 1) {
-		targetHostAddress += httpsPort;
-	} else {
-		targetHostAddress = targetHostAddress.replace(currentTarget[1], httpsPort);
-	}
-}
-
-console.log(`Target Backend: ${targetProtocol}${targetHostAddress}`);
 
 export default defineConfig({
-	plugins: [
-		react({
-			babel: {
-				plugins: ["babel-plugin-react-compiler"],
-			},
-		}),
-		tailwindcss(),
-	],
-	server: {
-		host: targetHostAddress.split(":")[0] || "localhost",
-		open: true,
-		proxy: {
-			"/api": {
-				target: `${targetProtocol}${targetHostAddress}`,
-				changeOrigin: true,
-				secure: false,
+  plugins: [
+    react({
+      babel: {
+        plugins: ["babel-plugin-react-compiler"],
+      },
+    }),
+    tailwindcss(),
+  ],
+  server: {
+    host: new URL(backendTarget).hostname,
+    open: true,
+    proxy: {
+      "/api": {
+        target: backendTarget,
+        changeOrigin: true,
+        secure: false,
 
-				configure: (proxy, _) => {
-					proxy.on("proxyReq", (proxyReq, req, _) => {
-						if (req.url != "/api/status") {
-							console.log("----------------------------");
-							console.log("🔹 Request Origin:", req.headers.origin);
-							console.log("🔹 Request Method:", req.method);
-							console.log("🔹 Request URL:", req.url);
-							console.log("----------------------------");
-							console.log("");
-						}
+        configure: (proxy) => {
+          proxy.on("proxyReq", (proxyReq, req) => {
+            if (req.url !== "/api/status") {
+              console.log(`${req.method} ${req.url} (origin: ${req.headers.origin})`);
+            }
 
-						if (req.headers.accept === "text/event-stream") {
-							proxyReq.setHeader("Connection", "keep-alive");
-							proxyReq.setHeader("Cache-Control", "no-cache");
-							proxyReq.setHeader("X-Accel-Buffering", "no");
-						}
-					});
-				},
-			},
-		},
-	},
-	css: {
-		postcss: "./postcss.config.js",
-	},
-	build: {
-		outDir: "build",
-		rollupOptions: {
-			output: {
-				manualChunks(id) {
-					if (id.includes('node_modules')) {
-						return "node"
-					}
-					if (id.includes('src/components')) {
-						return "components"
-					}
-				}
-			}
-		}
-	},
-	envDir: "../",
-	// For backwards compatibility
-	envPrefix: ["REACT_", "VITE_"],
+            // Server-sent events must reach the browser unbuffered.
+            if (req.headers.accept === "text/event-stream") {
+              proxyReq.setHeader("Connection", "keep-alive");
+              proxyReq.setHeader("Cache-Control", "no-cache");
+              proxyReq.setHeader("X-Accel-Buffering", "no");
+            }
+          });
+        },
+      },
+    },
+  },
+  build: {
+    outDir: "build",
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            return "node";
+          }
+          if (id.includes("src/components")) {
+            return "components";
+          }
+        },
+      },
+    },
+  },
+  envDir: "../",
+  // For backwards compatibility
+  envPrefix: ["REACT_", "VITE_"],
+  test: {
+    environment: "jsdom",
+    include: ["src/**/*.test.{ts,tsx}"],
+    restoreMocks: true,
+  },
 });

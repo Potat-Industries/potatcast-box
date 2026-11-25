@@ -1,8 +1,9 @@
 package session
 
 import (
-	"github.com/glimesh/broadcast-box/internal/webrtc/sessions/whep"
 	"time"
+
+	"github.com/glimesh/broadcast-box/internal/webrtc/sessions/whep"
 )
 
 // Status for an individual streaming session

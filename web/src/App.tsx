@@ -1,22 +1,21 @@
-import { Routes, Route } from "react-router";
-
+import { Route, Routes } from "react-router";
+import Admin from "./components/admin/Login";
 import BrowserBroadcaster from "./components/broadcast/Broadcast";
-import PlayerPage from "./components/player/PlayerPage";
-import RootWrapper from "./components/rootWrapper/RootWrapper";
+import PageLayout from "./components/layout/PageLayout";
+import PlayerRoute from "./components/player/PlayerPage";
 import Frontpage from "./components/selection/Frontpage";
 import Statistics from "./components/statistics/Statistics";
-import Admin from "./components/admin/Login";
 
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<RootWrapper />}>
+      <Route element={<PageLayout />}>
         <Route index element={<Frontpage />} />
         <Route path="/statistics" element={<Statistics />} />
         <Route path="/publish/*" element={<BrowserBroadcaster />} />
         <Route path="/admin/*" element={<Admin />} />
-        <Route path="/*" element={<PlayerPage />} />
       </Route>
+      <Route path="/*" element={<PlayerRoute />} />
     </Routes>
   );
 }

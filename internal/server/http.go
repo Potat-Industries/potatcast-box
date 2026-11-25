@@ -5,20 +5,26 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/glimesh/broadcast-box/internal/environment"
 	"github.com/glimesh/broadcast-box/internal/server/handlers"
 )
 
-var (
-	defaultHTTPAddress         string = ":8080"
-	defaultHTTPRedirectAddress string = ":80"
+const (
+	defaultHTTPAddress         = ":8080"
+	defaultHTTPRedirectAddress = ":80"
+
+	// Bounds how long a client may take to send request headers. Response writes stay
+	// unbounded because SSE responses are long-lived.
+	readHeaderTimeout = 10 * time.Second
 )
 
 func startHTTPServer(serverMux http.HandlerFunc) {
 	server := &http.Server{
-		Handler: serverMux,
-		Addr:    getHTTPAddress(),
+		Handler:           serverMux,
+		Addr:              getHTTPAddress(),
+		ReadHeaderTimeout: readHeaderTimeout,
 	}
 
 	slog.Info("Starting HTTP", "address", getHTTPAddress())
@@ -55,8 +61,9 @@ func setupHTTPRedirect() {
 			slog.Info("Setting up HTTP Redirecting")
 
 			redirectServer := &http.Server{
-				Addr:    getHTTPRedirectAddress(),
-				Handler: http.HandlerFunc(handlers.RedirectToHttpsHandler),
+				Addr:              getHTTPRedirectAddress(),
+				Handler:           http.HandlerFunc(handlers.RedirectToHttpsHandler),
+				ReadHeaderTimeout: readHeaderTimeout,
 			}
 
 			slog.Info("Forwarding requests to HTTPS server", "address", redirectServer.Addr)

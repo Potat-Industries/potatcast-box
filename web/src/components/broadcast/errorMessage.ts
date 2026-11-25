@@ -3,7 +3,7 @@ import { localeInterface } from "../../locale/localeInterface";
 export enum ErrorMessageEnum {
   NoMediaDevices,
   NotAllowedError,
-  NotFoundError
+  NotFoundError,
 }
 
 export function getMediaErrorMessage(locale: localeInterface, value: ErrorMessageEnum): string {

@@ -3,44 +3,33 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "start": "vite",
+    "host": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --max-warnings 0 --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build"
+  },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "@web3-storage/parse-link-header": "^3.1.0",
-    "dotenv": "^17.4.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-grid-layout": "^2.2.4",
     "react-router": "^8.3.0"
   },
-  "scripts": {
-    "start": "vite",
-    "host": "vite --host",
-    "build": "vite build",
-    "lint": "eslint ./src --ext .ts,.tsx --fix --max-warnings 0"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  },
   "devDependencies": {
-    "@babel/plugin-transform-private-property-in-object": "^8.0.1",
     "@eslint/js": "^9.39.5",
-    "@tailwindcss/postcss": "^4.3.3",
     "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@typescript-eslint/eslint-plugin": "^8.71.2",
@@ -48,13 +37,16 @@
     "@vitejs/plugin-basic-ssl": "^2.3.0",
     "@vitejs/plugin-react": "^6.0.5",
     "babel-plugin-react-compiler": "^1.0.0",
+    "dotenv": "^17.4.2",
     "eslint": "^9.39.5",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.13.0",
-    "postcss": "^8.5.25",
+    "jsdom": "^29.1.1",
+    "prettier": "^3.10.1",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
-    "vite": "^8.3.4"
+    "vite": "^8.3.4",
+    "vitest": "^4.1.12"
   }
 }

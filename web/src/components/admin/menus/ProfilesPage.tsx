@@ -25,7 +25,7 @@ const ProfilesPage = () => {
   const [isRemoveProfileModalOpen, setIsRemoveProfileModalOpen] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string>();
 
-  const copyTokenToClipboard = (token: string) => navigator.clipboard.writeText(token)
+  const copyTokenToClipboard = (token: string) => navigator.clipboard.writeText(token);
 
   const refreshProfiles = () => {
     fetch(`/api/admin/profiles`, {
@@ -113,7 +113,6 @@ const ProfilesPage = () => {
     refreshProfiles();
   }, []);
 
-
   return (
     <div className="p-6 w-full h-full max-w-6xl mx-auto flex flex-col justify-between">
       <h1 className="text-3xl font-bold mb-6">{locale.admin_page_profiles.title}</h1>
@@ -132,7 +131,9 @@ const ProfilesPage = () => {
 
         <ModalMessageBox
           title={locale.admin_page_profiles.remove_profile_modal_title}
-          message={locale.admin_page_profiles.remove_profile_modal_message + " " + isRemoveProfileModalOpen}
+          message={
+            locale.admin_page_profiles.remove_profile_modal_message + " " + isRemoveProfileModalOpen
+          }
           errorMessage={errorMessage}
           isOpen={isRemoveProfileModalOpen !== ""}
           canCloseOnBackgroundClick={true}
@@ -143,10 +144,18 @@ const ProfilesPage = () => {
         <table className="min-w-full rounded-lg">
           <thead className=" text-white">
             <tr>
-              <th className="px-4 py-2 text-left">{locale.admin_page_profiles.table_header_stream_key}</th>
-              <th className="px-4 py-2 text-left">{locale.admin_page_profiles.table_header_is_public}</th>
-              <th className="px-4 py-2 text-left">{locale.admin_page_profiles.table_header_motd}</th>
-              <th className="px-4 py-2 text-left">{locale.admin_page_profiles.table_header_token}</th>
+              <th className="px-4 py-2 text-left">
+                {locale.admin_page_profiles.table_header_stream_key}
+              </th>
+              <th className="px-4 py-2 text-left">
+                {locale.admin_page_profiles.table_header_is_public}
+              </th>
+              <th className="px-4 py-2 text-left">
+                {locale.admin_page_profiles.table_header_motd}
+              </th>
+              <th className="px-4 py-2 text-left">
+                {locale.admin_page_profiles.table_header_token}
+              </th>
               <th className="px-4 py-2 text-left"></th>
             </tr>
           </thead>
@@ -154,9 +163,7 @@ const ProfilesPage = () => {
             {response?.map((profile, index) => {
               return (
                 <tr key={index} className="border-t">
-                  <td className="px-4 py-2 font-medium ">
-                    {profile.streamKey}
-                  </td>
+                  <td className="px-4 py-2 font-medium ">{profile.streamKey}</td>
                   <td className="px-4 py-2 font-medium ">
                     {profile.isPublic
                       ? locale.admin_page_profiles.yes
@@ -167,7 +174,8 @@ const ProfilesPage = () => {
                     <div
                       title="Copy to clipboard"
                       className="flex flex-row gap-1 cursor-pointer"
-                      onClick={() => copyTokenToClipboard(profile.token)} >
+                      onClick={() => copyTokenToClipboard(profile.token)}
+                    >
                       {getIcon("Copy")}
                       {profile.token}
                     </div>

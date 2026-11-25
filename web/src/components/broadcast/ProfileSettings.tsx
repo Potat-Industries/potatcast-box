@@ -7,10 +7,10 @@ import { LocaleContext } from "../../providers/LocaleProvider";
 import toBase64Utf8 from "../../utilities/base64";
 
 interface Profile {
-  streamKey: string
-  isPublic: string
-  isActive: boolean
-  motd: string
+  streamKey: string;
+  isPublic: string;
+  isActive: boolean;
+  motd: string;
 }
 
 interface ProfileSettingsProps {
@@ -18,13 +18,13 @@ interface ProfileSettingsProps {
 }
 
 export default function ProfileSettings(props: ProfileSettingsProps) {
-  const { locale } = useContext(LocaleContext)
-  const { stateHasChanged } = props
-  const streamKey = location.pathname.split('/').pop()
+  const { locale } = useContext(LocaleContext);
+  const { stateHasChanged } = props;
+  const streamKey = location.pathname.split("/").pop();
 
-  const [profileType, setProfileType] = useState<"Public" | "Reserved">("Public")
-  const [isPublic, setIsPublic] = useState<"Public" | "Private">("Public")
-  const [motd, setMotd] = useState<string>("")
+  const [profileType, setProfileType] = useState<"Public" | "Reserved">("Public");
+  const [isPublic, setIsPublic] = useState<"Public" | "Private">("Public");
+  const [motd, setMotd] = useState<string>("");
 
   const getSettings = useCallback(() => {
     return fetch(`/api/whip/profile`, {
@@ -32,25 +32,26 @@ export default function ProfileSettings(props: ProfileSettingsProps) {
       headers: {
         Authorization: `Bearer ${toBase64Utf8(streamKey)}`,
       },
-    }).then((result) => {
-      if (result.status > 400 && result.status < 500 || result.status === 204) {
-        return;
-      }
+    })
+      .then((result) => {
+        if ((result.status > 400 && result.status < 500) || result.status === 204) {
+          return;
+        }
 
-      return result.json()
-    }).then((result: Profile | undefined) => {
+        return result.json();
+      })
+      .then((result: Profile | undefined) => {
+        if (result === undefined) {
+          setProfileType(() => "Public");
+          return;
+        }
 
-      if (result === undefined) {
-        setProfileType(() => "Public")
-        return
-      }
-
-      setProfileType(() => "Reserved")
-      setIsPublic(() => result.isPublic ? "Public" : "Private")
-      setMotd(() => result.motd)
-      stateHasChanged?.(result.isActive, result.streamKey)
-    });
-  }, [stateHasChanged, streamKey])
+        setProfileType(() => "Reserved");
+        setIsPublic(() => (result.isPublic ? "Public" : "Private"));
+        setMotd(() => result.motd);
+        stateHasChanged?.(result.isActive, result.streamKey);
+      });
+  }, [stateHasChanged, streamKey]);
 
   const updateSettings = useCallback(() => {
     fetch(`/api/whip/profile`, {
@@ -60,7 +61,7 @@ export default function ProfileSettings(props: ProfileSettingsProps) {
       },
       body: JSON.stringify({
         motd: motd,
-        isPublic: isPublic === "Public"
+        isPublic: isPublic === "Public",
       }),
     }).then((result) => {
       if (result.status > 400 && result.status < 500) {
@@ -72,24 +73,16 @@ export default function ProfileSettings(props: ProfileSettingsProps) {
   }, [getSettings, isPublic, motd, streamKey]);
 
   useLayoutEffect(() => {
-    void getSettings()
-  }, [getSettings])
+    void getSettings();
+  }, [getSettings]);
 
   if (profileType === "Public") {
-    return <></>
+    return <></>;
   }
 
   return (
-    <Card
-      title={locale.profile_settings.title}
-      subTitle={locale.profile_settings.subTitle}
-    >
-
-      <Input
-        label={locale.profile_settings.input_motd_label}
-        value={motd}
-        setValue={setMotd}
-      />
+    <Card title={locale.profile_settings.title} subTitle={locale.profile_settings.subTitle}>
+      <Input label={locale.profile_settings.input_motd_label} value={motd} setValue={setMotd} />
 
       <Toggle
         label={locale.profile_settings.toggle_stream_privacy_label}
@@ -104,9 +97,9 @@ export default function ProfileSettings(props: ProfileSettingsProps) {
 
       <Button
         title={locale.profile_settings.button_save_label}
-        color='Accept'
+        color="Accept"
         onClick={updateSettings}
       />
     </Card>
-  )
+  );
 }
